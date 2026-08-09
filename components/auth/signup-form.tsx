@@ -17,25 +17,37 @@ export function SignupForm() {
   async function submit(values: SignupInput) {
     const { email, password, username, displayName } = values;
     setError(null);
-    const { data, error: authError } = await createClient().auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-        data: { username, display_name: displayName },
-      },
-    });
-    if (authError) return setError(authError.message);
-    setConfirmation(!data.session);
-    if (data.session) window.location.assign("/");
+    try {
+      const { data, error: authError } = await createClient().auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: { username, display_name: displayName },
+        },
+      });
+      if (authError) return setError(authError.message);
+      setConfirmation(!data.session);
+      if (data.session) window.location.assign("/");
+    } catch {
+      setError(
+        "Supabase is not configured. Add your real project URL and anon key to .env.local, then restart npm run dev.",
+      );
+    }
   }
   async function google() {
     setError(null);
-    const { error: authError } = await createClient().auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    });
-    if (authError) setError(authError.message);
+    try {
+      const { error: authError } = await createClient().auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: `${window.location.origin}/auth/callback` },
+      });
+      if (authError) setError(authError.message);
+    } catch {
+      setError(
+        "Supabase is not configured. Add your real project URL and anon key to .env.local, then restart npm run dev.",
+      );
+    }
   }
   if (confirmation)
     return (

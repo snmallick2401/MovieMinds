@@ -19,20 +19,32 @@ export function LoginForm() {
   const destination = params.get("next")?.startsWith("/") ? params.get("next")! : "/";
   async function submit(values: LoginInput) {
     setError(null);
-    const { error: authError } = await createClient().auth.signInWithPassword(values);
-    if (authError) return setError(authError.message);
-    router.replace(destination);
-    router.refresh();
+    try {
+      const { error: authError } = await createClient().auth.signInWithPassword(values);
+      if (authError) return setError(authError.message);
+      router.replace(destination);
+      router.refresh();
+    } catch {
+      setError(
+        "Supabase is not configured. Add your real project URL and anon key to .env.local, then restart npm run dev.",
+      );
+    }
   }
   async function google() {
     setError(null);
-    const { error: authError } = await createClient().auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(destination)}`,
-      },
-    });
-    if (authError) setError(authError.message);
+    try {
+      const { error: authError } = await createClient().auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(destination)}`,
+        },
+      });
+      if (authError) setError(authError.message);
+    } catch {
+      setError(
+        "Supabase is not configured. Add your real project URL and anon key to .env.local, then restart npm run dev.",
+      );
+    }
   }
   return (
     <form onSubmit={form.handleSubmit(submit)} className="mt-8 space-y-5">

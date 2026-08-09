@@ -35,6 +35,10 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000). Sign up using email/password or Google; protected routes will redirect unauthenticated users to `/login`.
 
+### Add a development test account
+
+After replacing the placeholder Supabase values and running the profile migration, open Supabase Dashboard → Authentication → Users → **Add user**. Use `user@gmail.com` and `User@2401`, then mark the email as confirmed for local testing. The database trigger creates the matching profile automatically. Do not commit these credentials or add them to source code; rotate them before sharing the project.
+
 ## Environment variables
 
 | Variable                        | Purpose                              |
