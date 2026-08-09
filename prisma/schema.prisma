@@ -1,0 +1,23 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Profile data complements the identity stored in Supabase's auth.users table.
+/// IDs are intentionally shared with Supabase Auth UUIDs.
+model User {
+  id          String   @id @db.Uuid
+  email       String   @unique
+  username    String   @unique @db.VarChar(30)
+  displayName String   @db.VarChar(80)
+  avatarUrl   String?  @db.Text
+  bio         String?  @db.VarChar(500)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("profiles")
+}
