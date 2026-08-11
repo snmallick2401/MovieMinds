@@ -315,7 +315,7 @@ export async function syncCollection(
 export async function refreshMedia(
   source: MediaSource,
   sourceId: string,
-  mediaType: "MOVIE" | "TV" | "ANIME" | "ANIME_MOVIE" | "OVA" | "SPECIAL",
+  mediaType: MediaType,
 ) {
   const normalized =
     source === "TMDB"

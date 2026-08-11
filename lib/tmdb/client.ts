@@ -164,7 +164,12 @@ export async function fetchTmdbDetails(sourceId: string, type: "MOVIE" | "TV") {
   const [item, genres, providers] = await Promise.all([
     tmdbFetch<TmdbItem>(`/${kind}/${sourceId}?append_to_response=credits`),
     getTmdbGenres(kind),
-    tmdbFetch<TmdbProvidersResponse>(`/${kind}/${sourceId}/watch/providers`),
+    tmdbFetch<TmdbProvidersResponse>(`/${kind}/${sourceId}/watch/providers`).catch(
+      (err) => {
+        console.warn(`Failed to fetch TMDb providers for ${kind} ${sourceId}:`, err);
+        return { results: {} } as TmdbProvidersResponse;
+      }
+    ),
   ]);
   const normalized = normalizeTmdb(item, kind, genres);
   const regionalProviders = Object.values(providers.results ?? {}).flatMap(

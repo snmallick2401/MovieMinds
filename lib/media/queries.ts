@@ -133,6 +133,8 @@ export async function findMedia(filters: MediaFilters = {}): Promise<PaginatedMe
   };
 }
 
+import { refreshMedia } from "@/lib/media/sync";
+
 export async function findMediaById(id: string): Promise<MediaDetail | null> {
   if (id.startsWith("tmdb-")) {
     const sourceId = id.replace("tmdb-", "");
@@ -160,7 +162,22 @@ export async function findMediaById(id: string): Promise<MediaDetail | null> {
   }
 
   const media = await prisma.media.findUnique({ where: { id }, include: detailRelations });
-  return media ? serializeMediaDetail(media) : null;
+  if (!media) return null;
+
+  // If media exists in DB but has no credits/cast cached, auto-hydrate from source
+  if (media.credits.length === 0) {
+    try {
+      const refreshed = await refreshMedia(media.source, media.sourceId, media.mediaType);
+      const reFetched = await prisma.media.findUnique({ where: { id: refreshed.id }, include: detailRelations });
+      if (reFetched && reFetched.credits.length > 0) {
+        return serializeMediaDetail(reFetched);
+      }
+    } catch (err) {
+      console.warn(`Failed auto-hydrating credits for ${media.title}:`, err);
+    }
+  }
+
+  return serializeMediaDetail(media);
 }
 
 
