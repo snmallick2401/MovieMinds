@@ -47,6 +47,11 @@ export async function GET(
             displayName: true,
             avatarUrl: true,
           }
+        },
+        rating: {
+          select: {
+            rating: true
+          }
         }
       }
     });
@@ -83,7 +88,7 @@ export async function GET(
         createdAt: activity.createdAt.toISOString(),
         media: activity.media,
         user: activity.user,
-        rating: activity.rating ? Number(activity.rating) : null,
+        rating: activity.rating?.rating ? Number(activity.rating.rating) : null,
         review: reviewData,
       };
     });

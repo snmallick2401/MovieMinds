@@ -1,7 +1,10 @@
 import Image from "next/image";
 import { Avatar } from "@/components/ui/avatar";
-import { CalendarDays, Star, Library } from "lucide-react";
+import { CalendarDays, Star, Library, Users } from "lucide-react";
 import type { Prisma } from "@prisma/client";
+import { FollowButton } from "./follow-button";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 type ProfileHeroProps = {
   profile: Prisma.UserGetPayload<{ include: { favorites: true } }>;
@@ -9,9 +12,16 @@ type ProfileHeroProps = {
     totalWatched: number;
     averageRating: number | null;
   };
+  social: {
+    followersCount: number;
+    followingCount: number;
+    isFollowing: boolean;
+    isCurrentUser: boolean;
+    authUser: any;
+  };
 };
 
-export function ProfileHero({ profile, stats }: ProfileHeroProps) {
+export function ProfileHero({ profile, stats, social }: ProfileHeroProps) {
   return (
     <section className="relative isolate">
       {/* Banner */}
@@ -61,6 +71,22 @@ export function ProfileHero({ profile, stats }: ProfileHeroProps) {
               </div>
             </div>
           </div>
+          
+          <div className="flex w-full justify-center sm:w-auto sm:justify-end">
+            {!social.isCurrentUser ? (
+              social.authUser ? (
+                <FollowButton targetUserId={profile.id} initialIsFollowing={social.isFollowing} />
+              ) : (
+                <Link href="/login" className="inline-flex h-9 items-center justify-center rounded-full bg-primary px-6 text-sm font-bold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors">
+                  Follow
+                </Link>
+              )
+            ) : (
+              <Button variant="outline" size="sm" className="rounded-full px-6 font-bold shadow-sm">
+                Edit Profile
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Bio & Top Stats */}
@@ -93,6 +119,18 @@ export function ProfileHero({ profile, stats }: ProfileHeroProps) {
           </div>
           
           <div className="flex flex-wrap gap-4 md:flex-col md:justify-start">
+            <div className="flex items-center gap-4 border-b border-border/50 pb-4">
+              <div className="text-center">
+                <p className="text-lg font-bold">{social.followersCount}</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Followers</p>
+              </div>
+              <div className="h-8 w-px bg-border/50" />
+              <div className="text-center">
+                <p className="text-lg font-bold">{social.followingCount}</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Following</p>
+              </div>
+            </div>
+
             <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
               <Library className="size-5 text-primary" />
               <div>

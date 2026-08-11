@@ -1,0 +1,53 @@
+import { prisma } from "@/lib/prisma";
+import { UserCard } from "./user-card";
+import { calculateTasteMatch } from "@/lib/social/taste-match";
+
+export async function PeopleList({ category, currentUserId }: { category: "similar" | "popular" | "new", currentUserId?: string }) {
+  let usersData: any[] = [];
+
+  if (category === "new") {
+    const users = await prisma.user.findMany({
+      where: currentUserId ? { id: { not: currentUserId } } : undefined,
+      include: { _count: { select: { reviews: true, library: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 6,
+    });
+    usersData = users.map(u => ({ user: u }));
+  } else if (category === "popular") {
+    const users = await prisma.user.findMany({
+      where: currentUserId ? { id: { not: currentUserId } } : undefined,
+      include: { _count: { select: { reviews: true, library: true } } },
+      orderBy: { reviews: { _count: "desc" } },
+      take: 6,
+    });
+    usersData = users.map(u => ({ user: u }));
+  } else if (category === "similar" && currentUserId) {
+    const recentUsers = await prisma.user.findMany({
+      where: { id: { not: currentUserId }, library: { some: { status: "COMPLETED" } } },
+      include: { _count: { select: { reviews: true, library: true } } },
+      orderBy: { updatedAt: "desc" },
+      take: 12,
+    });
+
+    const withMatch = await Promise.all(
+      recentUsers.map(async (u) => {
+        const match = await calculateTasteMatch(currentUserId, u.id);
+        return { user: u, match };
+      })
+    );
+
+    usersData = withMatch.sort((a, b) => b.match.score - a.match.score).slice(0, 6);
+  }
+
+  if (usersData.length === 0) {
+    return <p className="text-muted-foreground bg-card border border-border/50 rounded-xl p-8 text-center">No users found.</p>;
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {usersData.map(data => (
+        <UserCard key={data.user.id} user={data.user} currentUserId={currentUserId} match={data.match} />
+      ))}
+    </div>
+  );
+}

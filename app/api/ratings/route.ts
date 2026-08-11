@@ -64,7 +64,7 @@ export async function POST(request: Request) {
       userId: user.id,
       mediaId: targetMediaId,
       type: "RATED",
-      rating: parsed.data.rating,
+      ratingId: rating.record.id,
     });
 
     return NextResponse.json({ rating: { id: rating.record.id, mediaId: rating.record.mediaId, rating: Number(rating.record.rating), createdAt: rating.record.createdAt.toISOString(), updatedAt: rating.record.updatedAt.toISOString() }, summary: { communityAverageRating: rating.summary.communityAverageRating ? Number(rating.summary.communityAverageRating) : null, weightedRating: rating.summary.weightedRating ? Number(rating.summary.weightedRating) : null, ratingCount: rating.summary.ratingCount, popularityScore: rating.summary.popularityScore, ratingDistribution: rating.summary.ratingDistribution } });

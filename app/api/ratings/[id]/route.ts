@@ -25,7 +25,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       userId: user.id,
       mediaId: result.rating.mediaId,
       type: "RATED",
-      rating: new Prisma.Decimal(rating.toFixed(1)),
+      ratingId: result.rating.id,
     });
     
     return NextResponse.json({ rating: { id: result.rating.id, rating: Number(result.rating.rating), mediaId: result.rating.mediaId }, summary: { communityAverageRating: result.summary.communityAverageRating ? Number(result.summary.communityAverageRating) : null, weightedRating: result.summary.weightedRating ? Number(result.summary.weightedRating) : null, ratingCount: result.summary.ratingCount, popularityScore: result.summary.popularityScore, ratingDistribution: result.summary.ratingDistribution } });
@@ -41,14 +41,15 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
       const existing = await tx.userRating.findUnique({ where: { id } });
       if (!existing || existing.userId !== user.id) return null;
       await tx.userRating.delete({ where: { id } });
-      return recalculateMediaRating(existing.mediaId, tx);
+      const summary = await recalculateMediaRating(existing.mediaId, tx);
+      return { summary, mediaId: existing.mediaId };
     });
     if (!result)
       return NextResponse.json({ error: "Rating not found." }, { status: 404 });
       
-    await removeActivity(user.id, id, "RATED");
+    await removeActivity(user.id, result.mediaId, "RATED");
 
-    return NextResponse.json({ summary: { communityAverageRating: result.communityAverageRating ? Number(result.communityAverageRating) : null, weightedRating: result.weightedRating ? Number(result.weightedRating) : null, ratingCount: result.ratingCount, popularityScore: result.popularityScore, ratingDistribution: result.ratingDistribution } });
+    return NextResponse.json({ summary: { communityAverageRating: result.summary.communityAverageRating ? Number(result.summary.communityAverageRating) : null, weightedRating: result.summary.weightedRating ? Number(result.summary.weightedRating) : null, ratingCount: result.summary.ratingCount, popularityScore: result.summary.popularityScore, ratingDistribution: result.summary.ratingDistribution } });
   } catch {
     return NextResponse.json({ error: "Could not remove rating." }, { status: 500 });
   }

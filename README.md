@@ -126,6 +126,19 @@ Reviews are now a dedicated, server-rendered media feature. Each user can keep o
 
 `POST /api/reviews`, `PUT /api/reviews/[id]`, and `DELETE /api/reviews/[id]` require an authenticated owner. `GET /api/media/[id]/reviews?page=1` is available to visitors and returns public reviews plus the signed-in user’s private review when applicable. The review editor saves unfinished drafts locally in the browser; spoiler text remains hidden until the reader chooses to reveal it.
 
+## Phase 5: v0.5.1 - Social Graph & Activity Feed
+
+Phase 5 turns MovieMinds into a connected social platform (a Letterboxd + Goodreads + Instagram experience for film and anime fans). Users can follow each other, discover members with similar taste, view personalized activity timelines, and receive grouped notifications.
+
+### Key Social Features
+
+- **Follow System**: Direct user-to-user follow graph with transactional APIs and real-time count updates on profile headers (`/user/[username]`).
+- **Taste Match Engine**: A 12-hour cached compatibility engine (`lib/social/taste-match.ts`) computing 0–100% compatibility scores, shared favorite titles, and common genres.
+- **Social Discovery (`/people`)**: Recommends members based on taste match, review volume, and recency, complete with interactive profile cards and activity stats.
+- **Personalized Activity Feed (`/feed`)**: Timeline aggregating ratings, reviews, library completions, and follow events from accounts you follow. Falls back seamlessly to community trends for new or inactive users.
+- **Notifications & Smart Grouping**: Notification center (`/notifications`) with real-time grouping for multiple follow or interaction events (*"Jane Doe and 2 others started following you"*).
+- **Database Performance & Indexing**: Optimized schema indexes across `Activity`, `Follow`, and `Notification` tables for fast sorting and aggregation as the user base grows.
+
 ## Deployment
 
 Deploy the repository to Vercel, configure the three environment variables in Vercel project settings, and add your production `https://your-domain/auth/callback` redirect URL in Supabase. Run the profile SQL migration once in the production Supabase project.

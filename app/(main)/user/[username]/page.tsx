@@ -10,6 +10,7 @@ import { RatingsTab } from "@/components/profile/tabs/ratings-tab";
 import { LibraryTab } from "@/components/profile/tabs/library-tab";
 import { Suspense } from "react";
 import { Loader2 } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
 
 export async function generateMetadata({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;
@@ -52,10 +53,31 @@ export default async function PublicProfilePage({
   if (!profile) notFound();
   
   const stats = await getUserStats(profile.id);
+
+  const supabase = await createClient();
+  const { data: { user: authUser } } = await supabase.auth.getUser();
+  const isCurrentUser = authUser?.id === profile.id;
+  
+  const [followersCount, followingCount, isFollowing] = await Promise.all([
+    prisma.follow.count({ where: { followingId: profile.id } }),
+    prisma.follow.count({ where: { followerId: profile.id } }),
+    authUser ? prisma.follow.findUnique({
+      where: {
+        followerId_followingId: {
+          followerId: authUser.id,
+          followingId: profile.id,
+        }
+      }
+    }).then(f => !!f) : Promise.resolve(false),
+  ]);
   
   return (
     <div className="-mx-4 -mt-6 sm:-mx-6 md:-mx-8 md:-mt-8">
-      <ProfileHero profile={profile} stats={stats} />
+      <ProfileHero 
+        profile={profile} 
+        stats={stats} 
+        social={{ followersCount, followingCount, isFollowing, isCurrentUser, authUser }} 
+      />
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <ProfileTabs profile={profile} initialTab={tab} stats={stats} />
         <div className="mt-8 min-h-[50vh]">

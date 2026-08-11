@@ -38,6 +38,11 @@ model User {
   wishlist         Wishlist[]
   favorites        UserFavorite[]
   activities       Activity[]
+  following        Follow[]       @relation("following")
+  followers        Follow[]       @relation("followers")
+  notifications    Notification[] @relation("received_notifications")
+  sentNotifications Notification[] @relation("sent_notifications")
+  targetedActivities Activity[]   @relation("target_user")
 
   @@map("profiles")
 }
@@ -218,6 +223,7 @@ model UserRating {
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   media     Media    @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  activities Activity[]
 
   @@unique([userId, mediaId])
   @@index([userId, updatedAt])
@@ -239,6 +245,7 @@ model Review {
   updatedAt  DateTime         @updatedAt
   user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   media      Media            @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  activities Activity[]
 
   @@unique([userId, mediaId])
   @@index([mediaId, visibility, createdAt])
@@ -298,21 +305,73 @@ enum ActivityType {
   COMPLETED
   STARTED
   WISHLISTED
+  FOLLOWED
+  REVIEW_LIKED
 }
 
 model Activity {
-  id        String       @id @default(cuid())
-  userId    String       @db.Uuid
-  mediaId   String
-  type      ActivityType
-  rating    Decimal?     @db.Decimal(3, 1)
-  reviewId  String?
-  createdAt DateTime     @default(now())
-  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  media     Media        @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  id           String       @id @default(cuid())
+  userId       String       @db.Uuid
+  type         ActivityType
+  mediaId      String?
+  reviewId     String?
+  ratingId     String?
+  targetUserId String?      @db.Uuid
+  metadata     Json?
+  createdAt    DateTime     @default(now())
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media        Media?       @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  review       Review?      @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  rating       UserRating?  @relation(fields: [ratingId], references: [id], onDelete: Cascade)
+  targetUser   User?        @relation("target_user", fields: [targetUserId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
   @@map("activities")
+}
+
+model Follow {
+  followerId  String   @db.Uuid
+  followingId String   @db.Uuid
+  createdAt   DateTime @default(now())
+
+  follower    User     @relation("following", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("followers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+  @@index([followerId, createdAt(sort: Desc)])
+  @@index([followingId, createdAt(sort: Desc)])
+  @@map("follows")
+}
+
+enum NotificationType {
+  NEW_FOLLOWER
+  REVIEW_LIKE
+  REVIEW_COMMENT
+  REPLY
+  MENTION
+  RECOMMENDATION
+  LIST_FOLLOWED
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  userId      String           @db.Uuid
+  actorId     String           @db.Uuid
+  type        NotificationType
+  read        Boolean          @default(false)
+  mediaId     String?
+  reviewId    String?
+  metadata    Json?
+  createdAt   DateTime         @default(now())
+
+  user        User             @relation("received_notifications", fields: [userId], references: [id], onDelete: Cascade)
+  actor       User             @relation("sent_notifications", fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+  @@map("notifications")
 }
 
 model Person {
