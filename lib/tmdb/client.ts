@@ -79,7 +79,7 @@ export async function tmdbFetch<T>(path: string, init?: RequestInit): Promise<T>
     } catch (error: any) {
       clearTimeout(timeout);
       lastError = error;
-      if (error.name === 'AbortError' || error.code === 'UND_ERR_CONNECT_TIMEOUT' || error.message.includes('fetch failed')) {
+      if (error.name === 'AbortError' || error.code === 'UND_ERR_CONNECT_TIMEOUT') {
         console.warn(`TMDb connection failed for ${path}. Failing fast.`);
         throw error; // Fail immediately on network unreachability
       }
