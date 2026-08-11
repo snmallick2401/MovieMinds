@@ -36,10 +36,10 @@ export function HomeHero({
               <Sparkles className="size-3.5" />
               Welcome back
             </span>
-            <h1 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl text-foreground">
+            <h1 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl text-white">
               Welcome back, <span className="text-purple-400">{userName}</span>.
             </h1>
-            <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/70 sm:text-base">
               Build your watchlist, keep track of every story, and find your next obsession.
             </p>
           </div>
@@ -91,10 +91,10 @@ export function HomeHero({
             <CheckSquare className="size-4" />
           </div>
           <div>
-            <p className="text-base font-extrabold leading-tight text-foreground">
+            <p className="text-base font-extrabold leading-tight text-white">
               {stats.totalWatched}
             </p>
-            <p className="text-[11px] font-medium text-muted-foreground">Completed</p>
+            <p className="text-[11px] font-medium text-white/70">Completed</p>
           </div>
         </div>
 
@@ -103,10 +103,10 @@ export function HomeHero({
             <Clock className="size-4" />
           </div>
           <div>
-            <p className="text-base font-extrabold leading-tight text-foreground">
+            <p className="text-base font-extrabold leading-tight text-white">
               {stats.hoursWatched}
             </p>
-            <p className="text-[11px] font-medium text-muted-foreground">Hours watched</p>
+            <p className="text-[11px] font-medium text-white/70">Hours watched</p>
           </div>
         </div>
 
@@ -115,10 +115,10 @@ export function HomeHero({
             <Star className="size-4" />
           </div>
           <div>
-            <p className="text-base font-extrabold leading-tight text-foreground">
+            <p className="text-base font-extrabold leading-tight text-white">
               {stats.averageRating ? stats.averageRating.toFixed(1) : "—"}
             </p>
-            <p className="text-[11px] font-medium text-muted-foreground">Average rating</p>
+            <p className="text-[11px] font-medium text-white/70">Average rating</p>
           </div>
         </div>
 
@@ -127,8 +127,8 @@ export function HomeHero({
             <Flame className="size-4" />
           </div>
           <div>
-            <p className="text-base font-extrabold leading-tight text-foreground">1</p>
-            <p className="text-[11px] font-medium text-muted-foreground">Day streak</p>
+            <p className="text-base font-extrabold leading-tight text-white">1</p>
+            <p className="text-[11px] font-medium text-white/70">Day streak</p>
           </div>
         </div>
 
@@ -137,8 +137,8 @@ export function HomeHero({
             <Shield className="size-4" />
           </div>
           <div>
-            <p className="text-base font-extrabold leading-tight text-foreground">{topGenre}</p>
-            <p className="text-[11px] font-medium text-muted-foreground">Top genre</p>
+            <p className="text-base font-extrabold leading-tight text-white">{topGenre}</p>
+            <p className="text-[11px] font-medium text-white/70">Top genre</p>
           </div>
         </div>
       </div>

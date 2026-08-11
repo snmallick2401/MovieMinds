@@ -56,7 +56,7 @@ export default async function MediaPage({
             fill
             priority
             sizes="100vw"
-            className="-z-20 object-cover opacity-40 mix-blend-screen"
+            className="-z-20 object-cover opacity-30 mix-blend-multiply dark:opacity-40 dark:mix-blend-screen"
           />
         )}
         <div className="absolute inset-0 -z-10 bg-gradient-to-t from-background via-background/80 to-transparent" />
@@ -72,7 +72,7 @@ export default async function MediaPage({
           </Link>
           <div className="mt-8 grid gap-8 sm:grid-cols-[16rem_1fr] lg:grid-cols-[20rem_1fr] items-end">
             {media.posterUrl ? (
-              <div className="relative mx-auto aspect-[2/3] w-56 overflow-hidden rounded-xl border border-border/20 shadow-[0_0_60px_rgba(0,0,0,0.8)] sm:mx-0 sm:w-full">
+              <div className="relative mx-auto aspect-[2/3] w-56 overflow-hidden rounded-xl border border-border/20 shadow-2xl shadow-black/20 dark:shadow-[0_0_60px_rgba(0,0,0,0.8)] sm:mx-0 sm:w-full">
                 <Image
                   src={media.posterUrl}
                   alt={`${media.title} poster`}
@@ -83,7 +83,7 @@ export default async function MediaPage({
                 />
               </div>
             ) : (
-              <div className="aspect-[2/3] w-56 rounded-xl bg-muted border border-border shadow-[0_0_60px_rgba(0,0,0,0.8)] sm:w-full" />
+              <div className="aspect-[2/3] w-56 rounded-xl bg-muted border border-border shadow-2xl shadow-black/20 dark:shadow-[0_0_60px_rgba(0,0,0,0.8)] sm:w-full" />
             )}
             <div className="pb-4">
               <div className="flex flex-wrap gap-2">
@@ -94,7 +94,7 @@ export default async function MediaPage({
                   {MEDIA_STATUS_LABELS[media.status]}
                 </span>
               </div>
-              <h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-5xl text-white">
+              <h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-5xl text-foreground">
                 {media.title}
               </h1>
               {media.originalTitle && media.originalTitle !== media.title && (

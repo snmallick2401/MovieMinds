@@ -32,10 +32,10 @@ export function ExploreHero({ featuredPosters }: { featuredPosters: MediaSummary
               <Sparkles className="size-3.5" />
               Discover your next story
             </span>
-            <h1 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl text-foreground">
+            <h1 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl text-white">
               Explore every kind of screen story.
             </h1>
-            <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/70 sm:text-base">
               Movies, series, anime, documentaries, and more, all in one thoughtful catalog.
             </p>
           </div>
@@ -51,7 +51,7 @@ export function ExploreHero({ featuredPosters }: { featuredPosters: MediaSummary
               <Link
                 key={label}
                 href={`/explore?type=${type}`}
-                className="flex items-center gap-2 rounded-xl border border-border/80 bg-background/60 px-3.5 py-2 text-xs font-semibold text-foreground backdrop-blur transition-all hover:border-purple-500/40 hover:bg-purple-500/10 hover:text-purple-300"
+                className="flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-3.5 py-2 text-xs font-semibold text-white backdrop-blur transition-all hover:border-purple-500/40 hover:bg-purple-500/20 hover:text-purple-200"
               >
                 <Icon className="size-3.5 text-purple-400" />
                 <span>{label}</span>
