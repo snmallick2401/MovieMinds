@@ -30,19 +30,38 @@ export async function middleware(request: NextRequest) {
     prefix === "/" ? pathname === "/" : pathname.startsWith(prefix),
   );
 
+  // Advanced Logging Middleware
+  const startTime = Date.now();
+  const method = request.method;
+  const url = request.url;
+  const ip = request.headers.get("x-forwarded-for") ?? "unknown";
+
   if (!user && isProtected) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("next", `${pathname}${search}`);
-    return NextResponse.redirect(url);
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/login";
+    redirectUrl.searchParams.set("next", `${pathname}${search}`);
+    console.log(JSON.stringify({ level: "info", msg: "HTTP Request Redirected (Auth)", method, path: pathname, ip, duration: Date.now() - startTime }));
+    return NextResponse.redirect(redirectUrl);
   }
 
   if (user && authPages.includes(pathname)) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/";
-    url.search = "";
-    return NextResponse.redirect(url);
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/";
+    redirectUrl.search = "";
+    console.log(JSON.stringify({ level: "info", msg: "HTTP Request Redirected (Auth)", method, path: pathname, ip, duration: Date.now() - startTime }));
+    return NextResponse.redirect(redirectUrl);
   }
+
+  // Intercept the response to log status code
+  console.log(JSON.stringify({ 
+    level: "info", 
+    msg: "HTTP Request", 
+    method, 
+    path: pathname, 
+    ip, 
+    status: response.status,
+    duration: Date.now() - startTime 
+  }));
 
   return response;
 }

@@ -3,21 +3,348 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 /// Profile data complements the identity stored in Supabase's auth.users table.
 /// IDs are intentionally shared with Supabase Auth UUIDs.
 model User {
-  id          String   @id @db.Uuid
-  email       String   @unique
-  username    String   @unique @db.VarChar(30)
-  displayName String   @db.VarChar(80)
-  avatarUrl   String?  @db.Text
-  bio         String?  @db.VarChar(500)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String         @id @db.Uuid
+  email         String         @unique
+  username      String         @unique @db.VarChar(30)
+  displayName   String         @db.VarChar(80)
+  avatarUrl     String?        @db.Text
+  bio           String?        @db.VarChar(500)
+  libraryPublic    Boolean        @default(true)
+  bannerUrl        String?        @db.Text
+  accentColor      String?        @db.VarChar(7)
+  favoriteGenres   String[]       @default([])
+  favoriteCreators String[]       @default([])
+  favoriteServices String[]       @default([])
+  showRatings      Boolean        @default(true)
+  showReviews      Boolean        @default(true)
+  showStats        Boolean        @default(true)
+  showActivity     Boolean        @default(true)
+  showFavorites    Boolean        @default(true)
+  hideAdult        Boolean        @default(true)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  library          UserLibrary[]
+  ratings          UserRating[]
+  reviews          Review[]
+  watchHistory     WatchHistory[]
+  wishlist         Wishlist[]
+  favorites        UserFavorite[]
+  activities       Activity[]
 
   @@map("profiles")
+}
+
+enum MediaSource {
+  TMDB
+  ANILIST
+}
+
+enum MediaType {
+  MOVIE
+  TV
+  ANIME
+  ANIME_MOVIE
+  OVA
+  DOCUMENTARY
+  SPECIAL
+}
+
+enum MediaStatus {
+  RELEASED
+  UPCOMING
+  AIRING
+  FINISHED
+  CANCELLED
+}
+
+enum LibraryStatus {
+  WATCHING
+  COMPLETED
+  PLAN_TO_WATCH
+  ON_HOLD
+  DROPPED
+}
+
+enum ReviewVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+model Media {
+  id                String          @id @default(cuid())
+  source            MediaSource
+  sourceId          String
+  title             String
+  originalTitle     String?
+  alternativeTitles String[]        @default([])
+  description       String?         @db.Text
+  posterUrl         String?         @db.Text
+  backdropUrl       String?         @db.Text
+  releaseDate       DateTime?
+  year              Int?
+  runtime           Int?
+  language          String?
+  country           String?
+  mediaType         MediaType
+  status            MediaStatus     @default(RELEASED)
+  contentRating     String?
+  averageRating     Float?
+  communityAverageRating Decimal? @db.Decimal(3, 2)
+  ratingCount       Int             @default(0)
+  weightedRating    Decimal?        @db.Decimal(3, 2)
+  ratingDistribution Json?
+  popularityScore   Float           @default(0)
+  voteCount         Int             @default(0)
+  popularity        Float           @default(0)
+  seasonCount       Int?
+  episodeCount      Int?
+  sourceUpdatedAt   DateTime?
+  lastSyncedAt      DateTime        @default(now())
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  genres            MediaGenre[]
+  platforms         MediaPlatform[]
+  libraryEntries    UserLibrary[]
+  ratings           UserRating[]
+  reviews           Review[]
+  watchHistory      WatchHistory[]
+  wishlistEntries   Wishlist[]
+  userFavorites     UserFavorite[]
+  activities        Activity[]
+  credits           MediaPerson[]
+
+  @@unique([source, sourceId])
+  @@index([mediaType, popularity])
+  @@index([weightedRating, ratingCount])
+  @@index([status, releaseDate])
+  @@index([year])
+  @@index([language])
+  @@index([country])
+  @@map("media")
+}
+
+model Genre {
+  id        String       @id @default(cuid())
+  name      String       @unique
+  createdAt DateTime     @default(now())
+  media     MediaGenre[]
+
+  @@map("genres")
+}
+
+model MediaGenre {
+  mediaId String
+  genreId String
+  media   Media  @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  genre   Genre  @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([mediaId, genreId])
+  @@index([genreId])
+  @@map("media_genres")
+}
+
+model StreamingPlatform {
+  id        String          @id @default(cuid())
+  name      String          @unique
+  logoUrl   String?         @db.Text
+  createdAt DateTime        @default(now())
+  media     MediaPlatform[]
+
+  @@map("streaming_platforms")
+}
+
+model MediaPlatform {
+  mediaId    String
+  platformId String
+  region     String?
+  watchUrl   String?           @db.Text
+  media      Media             @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  platform   StreamingPlatform @relation(fields: [platformId], references: [id], onDelete: Cascade)
+
+  @@id([mediaId, platformId])
+  @@index([platformId])
+  @@map("media_platforms")
+}
+
+model CatalogSync {
+  id          String      @id @default(cuid())
+  source      MediaSource
+  collection  String
+  page        Int         @default(1)
+  completedAt DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([source, collection, page])
+  @@map("catalog_syncs")
+}
+
+model UserLibrary {
+  id          String        @id @default(cuid())
+  userId      String        @db.Uuid
+  mediaId     String
+  status      LibraryStatus @default(PLAN_TO_WATCH)
+  progress    Int           @default(0)
+  completed   Boolean       @default(false)
+  startedAt   DateTime?
+  completedAt DateTime?
+  watchCount  Int           @default(0)
+  favorite    Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media       Media         @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, mediaId])
+  @@index([userId, status, updatedAt])
+  @@index([userId, completedAt])
+  @@map("user_library")
+}
+
+model UserRating {
+  id        String   @id @default(cuid())
+  userId    String   @db.Uuid
+  mediaId   String
+  rating    Decimal  @db.Decimal(3, 1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media     Media    @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, mediaId])
+  @@index([userId, updatedAt])
+  @@index([mediaId, rating])
+  @@map("user_ratings")
+}
+
+model Review {
+  id         String           @id @default(cuid())
+  userId     String           @db.Uuid
+  mediaId    String
+  title      String?          @db.VarChar(120)
+  body       String           @db.Text
+  spoiler    Boolean          @default(false)
+  visibility ReviewVisibility @default(PUBLIC)
+  likeCount  Int              @default(0)
+  createdAt  DateTime         @default(now())
+  editedAt   DateTime?
+  updatedAt  DateTime         @updatedAt
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media      Media            @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, mediaId])
+  @@index([mediaId, visibility, createdAt])
+  @@index([userId, updatedAt])
+  @@map("reviews")
+}
+
+model WatchHistory {
+  id        String   @id @default(cuid())
+  userId    String   @db.Uuid
+  mediaId   String
+  watchedAt DateTime @default(now())
+  progress  Int      @default(0)
+  note      String?  @db.VarChar(500)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media     Media    @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@index([userId, watchedAt])
+  @@index([mediaId])
+  @@map("watch_history")
+}
+
+model Wishlist {
+  id        String   @id @default(cuid())
+  userId    String   @db.Uuid
+  mediaId   String
+  priority  Int      @default(0)
+  note      String?  @db.VarChar(500)
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media     Media    @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, mediaId])
+  @@index([userId, position])
+  @@map("wishlists")
+}
+
+model UserFavorite {
+  id        String    @id @default(cuid())
+  userId    String    @db.Uuid
+  mediaId   String
+  category  MediaType
+  position  Int
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media     Media     @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, mediaId])
+  @@index([userId, category, position])
+  @@map("user_favorites")
+}
+
+enum ActivityType {
+  RATED
+  REVIEWED
+  COMPLETED
+  STARTED
+  WISHLISTED
+}
+
+model Activity {
+  id        String       @id @default(cuid())
+  userId    String       @db.Uuid
+  mediaId   String
+  type      ActivityType
+  rating    Decimal?     @db.Decimal(3, 1)
+  reviewId  String?
+  createdAt DateTime     @default(now())
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media     Media        @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("activities")
+}
+
+model Person {
+  id         String        @id @default(cuid())
+  tmdbId     Int           @unique
+  name       String        @db.VarChar(120)
+  profileUrl String?       @db.Text
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  credits    MediaPerson[]
+
+  @@map("people")
+}
+
+enum PersonRole {
+  CAST
+  CREW
+}
+
+model MediaPerson {
+  id         String        @id @default(cuid())
+  mediaId    String
+  personId   String
+  role       PersonRole
+  character  String?       @db.VarChar(200)
+  job        String?       @db.VarChar(100)
+  department String?       @db.VarChar(100)
+  order      Int           @default(0)
+  media      Media         @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  person     Person        @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@index([mediaId, role, order])
+  @@index([personId])
+  @@map("media_people")
 }

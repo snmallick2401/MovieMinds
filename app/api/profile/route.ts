@@ -24,6 +24,7 @@ export async function PATCH(request: Request) {
         username: parsed.data.username,
         bio: parsed.data.bio || null,
         avatarUrl: parsed.data.avatarUrl || null,
+        libraryPublic: parsed.data.libraryPublic ?? true,
       },
     });
     return NextResponse.json({ profile });

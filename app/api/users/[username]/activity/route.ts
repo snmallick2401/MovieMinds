@@ -1,0 +1,99 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ username: string }> }
+) {
+  try {
+    const { username } = await params;
+    
+    const user = await prisma.user.findUnique({
+      where: { username },
+      select: { id: true, showActivity: true, libraryPublic: true },
+    });
+    
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+    
+    if (!user.showActivity || !user.libraryPublic) {
+      return NextResponse.json({ items: [], nextCursor: null });
+    }
+    
+    const { searchParams } = new URL(request.url);
+    const cursor = searchParams.get("cursor");
+    const limit = 20;
+    
+    const activities = await prisma.activity.findMany({
+      where: { userId: user.id },
+      take: limit + 1,
+      skip: cursor ? 1 : 0,
+      cursor: cursor ? { id: cursor } : undefined,
+      orderBy: { createdAt: "desc" },
+      include: {
+        media: {
+          select: {
+            id: true,
+            title: true,
+            posterUrl: true,
+            year: true,
+            mediaType: true,
+          }
+        },
+        user: {
+          select: {
+            username: true,
+            displayName: true,
+            avatarUrl: true,
+          }
+        }
+      }
+    });
+    
+    let nextCursor: string | null = null;
+    if (activities.length > limit) {
+      const nextItem = activities.pop();
+      nextCursor = nextItem!.id;
+    }
+    
+    // For REVIEWED types, optionally fetch the review title/spoiler state
+    // To make it efficient, gather all reviewIds
+    const reviewIds = activities.filter(a => a.type === "REVIEWED" && a.reviewId).map(a => a.reviewId!);
+    const reviews = reviewIds.length > 0 
+      ? await prisma.review.findMany({
+          where: { id: { in: reviewIds }, visibility: "PUBLIC" },
+          select: { id: true, title: true, spoiler: true }
+        })
+      : [];
+    const reviewsMap = new Map(reviews.map(r => [r.id, r]));
+    
+    const formattedActivities = activities.map(activity => {
+      let reviewData = undefined;
+      if (activity.type === "REVIEWED" && activity.reviewId) {
+        const r = reviewsMap.get(activity.reviewId);
+        if (r) {
+          reviewData = { title: r.title, spoiler: r.spoiler };
+        }
+      }
+      
+      return {
+        id: activity.id,
+        type: activity.type,
+        createdAt: activity.createdAt.toISOString(),
+        media: activity.media,
+        user: activity.user,
+        rating: activity.rating ? Number(activity.rating) : null,
+        review: reviewData,
+      };
+    });
+    
+    return NextResponse.json({ 
+      items: formattedActivities.filter(a => a.type !== "REVIEWED" || a.review), 
+      nextCursor 
+    });
+  } catch (error) {
+    console.error("Activity fetch error:", error);
+    return NextResponse.json({ error: "Could not fetch activity feed." }, { status: 500 });
+  }
+}

@@ -9,7 +9,7 @@ export function NavigationLinks({ mobile = false }: { mobile?: boolean }) {
   const pathname = usePathname();
   return (
     <nav
-      className={cn(mobile ? "grid grid-cols-5" : "space-y-1")}
+      className={cn(mobile ? "grid grid-cols-6" : "space-y-1")}
       aria-label="Primary navigation"
     >
       {navItems.map(({ href, label, icon: Icon }) => {

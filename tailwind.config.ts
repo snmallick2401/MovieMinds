@@ -17,6 +17,8 @@ const config: Config = {
         border: "hsl(var(--border))",
         ring: "hsl(var(--ring))",
         destructive: "hsl(var(--destructive))",
+        accent: "hsl(var(--accent))",
+        "accent-foreground": "hsl(var(--accent-foreground))",
       },
       borderRadius: { xl: "0.9rem", lg: "0.7rem", md: "0.5rem" },
       keyframes: {

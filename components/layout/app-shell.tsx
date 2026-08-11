@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { Menu, Search } from "lucide-react";
+import { Menu } from "lucide-react";
 import type { ReactNode } from "react";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { SearchBar } from "@/components/search/search-bar";
 import { NavigationLinks } from "@/components/navigation/navigation-links";
 import { SignOutButton } from "@/components/layout/sign-out-button";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
@@ -52,14 +52,8 @@ export function AppShell({
           >
             <Menu className="size-5" />
           </Button>
-          <div className="relative hidden max-w-md flex-1 sm:block">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              aria-label="Search media"
-              disabled
-              placeholder="Search movies, anime, shows…"
-              className="pl-9"
-            />
+          <div className="hidden max-w-md flex-1 sm:block">
+            <SearchBar />
           </div>
           <div className="ml-auto flex items-center gap-1">
             <ThemeToggle />

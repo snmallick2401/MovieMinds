@@ -13,6 +13,7 @@ export const profileSchema = z.object({
   avatarUrl: z
     .union([z.literal(""), z.string().url("Enter a valid image URL.")])
     .optional(),
+  libraryPublic: z.boolean().optional(),
 });
 
 export type ProfileInput = z.infer<typeof profileSchema>;

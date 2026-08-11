@@ -16,6 +16,7 @@ export function ProfileForm({ profile }: { profile: Profile }) {
       username: profile.username,
       bio: profile.bio ?? "",
       avatarUrl: profile.avatarUrl ?? "",
+      libraryPublic: profile.libraryPublic,
     },
   });
   async function submit(values: ProfileInput) {
@@ -70,6 +71,19 @@ export function ProfileForm({ profile }: { profile: Profile }) {
       {form.formState.errors.bio && (
         <p className="text-sm text-destructive">{form.formState.errors.bio.message}</p>
       )}
+      <label className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-3 text-sm">
+        <input
+          type="checkbox"
+          className="size-4 accent-primary"
+          {...form.register("libraryPublic")}
+        />
+        <span>
+          <span className="block font-medium">Public library</span>
+          <span className="text-muted-foreground">
+            Let others view your completed titles and public reviews.
+          </span>
+        </span>
+      </label>
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={form.formState.isSubmitting}>
           {form.formState.isSubmitting ? "Saving…" : "Save changes"}

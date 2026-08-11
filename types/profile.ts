@@ -5,5 +5,6 @@ export type Profile = {
   displayName: string;
   avatarUrl: string | null;
   bio: string | null;
+  libraryPublic: boolean;
   createdAt: Date;
 };

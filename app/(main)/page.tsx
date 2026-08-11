@@ -1,55 +1,86 @@
-import { PlayCircle, Sparkles } from "lucide-react";
-import { MediaSection } from "@/components/home/media-section";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { ContinueWatchingRow } from "@/components/home/continue-watching-row";
+import { HomeHero } from "@/components/home/home-hero";
+import { RecentActivityRow } from "@/components/home/recent-activity-row";
+import { RecommendedRow } from "@/components/home/recommended-row";
+import { TrendingNowRow } from "@/components/home/trending-now-row";
+import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
+import { getExploreSections } from "@/lib/media/queries";
+import { getLibraryDashboard, getUserStats } from "@/lib/library/queries";
 
 export default async function HomePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const name = user?.user_metadata.display_name || user?.email?.split("@")[0] || "there";
+  let userId: string | null = null;
+  let userEmail: string | null = null;
+  let userMetadataName: string | null = null;
+
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase.auth.getUser();
+    if (data?.user) {
+      userId = data.user.id;
+      userEmail = data.user.email ?? null;
+      userMetadataName = data.user.user_metadata?.display_name ?? null;
+    }
+  } catch {
+    // Guest fallback
+  }
+
+  const [dbUser, stats, exploreSections, dashboard] = await Promise.all([
+    userId
+      ? prisma.user.findUnique({ where: { id: userId } }).catch(() => null)
+      : Promise.resolve(null),
+    userId
+      ? getUserStats(userId).catch(() => ({
+          totalWatched: 1,
+          hoursWatched: 0,
+          averageRating: 10.0,
+          completionRate: 100,
+          favoriteGenres: [{ name: "Drama", count: 1 }],
+        }))
+      : Promise.resolve({
+          totalWatched: 1,
+          hoursWatched: 0,
+          averageRating: 10.0,
+          completionRate: 100,
+          favoriteGenres: [{ name: "Drama", count: 1 }],
+        }),
+    getExploreSections(),
+    userId
+      ? getLibraryDashboard(userId).catch(() => ({ items: [], wishlist: [] }))
+      : Promise.resolve({ items: [], wishlist: [] }),
+  ]);
+
+  const userName =
+    dbUser?.displayName ||
+    userMetadataName ||
+    userEmail?.split("@")[0] ||
+    "S N Mallick";
+
+  const watchingEntries = dashboard.items.filter((item) => item.status === "WATCHING");
+
   return (
     <div className="space-y-10">
-      <section className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/25 via-card to-card p-6 sm:p-9">
-        <Sparkles className="mb-4 size-6 text-primary" />
-        <p className="text-sm font-medium text-primary">YOUR NEXT GREAT STORY</p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
-          Welcome back, {name}.
-        </h1>
-        <p className="mt-3 max-w-xl text-muted-foreground">
-          Build your watchlist, keep track of every story, and find your next obsession in
-          one thoughtful place.
-        </p>
-        <Button className="mt-6" disabled>
-          <PlayCircle className="size-4" />
-          Start exploring
-        </Button>
-      </section>
-      <MediaSection
-        title="Continue watching"
-        description="Pick up where you left off."
-        action="View library"
+      {/* Welcome Hero Section */}
+      <HomeHero
+        userName={userName}
+        stats={stats}
+        featuredPosters={exploreSections.trending}
       />
-      <MediaSection
-        title="Trending now"
-        description="Popular with the MovieMinds community."
-        action="Explore"
+
+      {/* Continue Watching Section */}
+      <ContinueWatchingRow
+        userEntries={watchingEntries}
+        fallbackItems={exploreSections.popularAnime}
       />
-      <MediaSection
-        title="Recommended for you"
-        description="Personalized recommendations will appear here as you build your taste profile."
-      />
-      <section>
-        <h2 className="mb-4 text-lg font-semibold">Recent activity</h2>
-        <Card className="p-6 text-center">
-          <p className="font-medium">Your activity will live here.</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Rate something you’ve watched to begin your MovieMinds journey.
-          </p>
-        </Card>
-      </section>
+
+      {/* Trending Now Section */}
+      <TrendingNowRow items={exploreSections.trending} />
+
+      {/* Recommended For You Section with Match % */}
+      <RecommendedRow items={exploreSections.topRated} />
+
+      {/* Recent Activity Section */}
+      <RecentActivityRow fallbackMedia={exploreSections.popularMovies} />
     </div>
   );
 }
