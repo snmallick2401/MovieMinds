@@ -164,20 +164,27 @@ export async function findMediaById(id: string): Promise<MediaDetail | null> {
   const media = await prisma.media.findUnique({ where: { id }, include: detailRelations });
   if (!media) return null;
 
-  // If media exists in DB but has no credits/cast cached, auto-hydrate from source
-  if (media.credits.length === 0) {
-    try {
-      const refreshed = await refreshMedia(media.source, media.sourceId, media.mediaType);
-      const reFetched = await prisma.media.findUnique({ where: { id: refreshed.id }, include: detailRelations });
-      if (reFetched && reFetched.credits.length > 0) {
-        return serializeMediaDetail(reFetched);
-      }
-    } catch (err) {
-      console.warn(`Failed auto-hydrating credits for ${media.title}:`, err);
-    }
-  }
-
   return serializeMediaDetail(media);
+}
+
+/**
+ * Automatically hydrates missing credits/platforms for a media item if they are empty.
+ * Call this from a Suspense boundary so it doesn't block the critical render path.
+ */
+export async function hydrateMediaDetails(media: MediaDetail): Promise<MediaDetail> {
+  if (media.credits.length > 0 && media.platforms.length > 0) return media;
+
+  try {
+    const refreshed = await refreshMedia(media.source, media.sourceId, media.mediaType as any);
+    const reFetched = await prisma.media.findUnique({ where: { id: refreshed.id }, include: detailRelations });
+    if (reFetched) {
+      return serializeMediaDetail(reFetched);
+    }
+  } catch (err) {
+    console.warn(`Failed auto-hydrating credits for ${media.title}:`, err);
+  }
+  
+  return media;
 }
 
 

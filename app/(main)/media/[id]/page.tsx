@@ -1,22 +1,20 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, Clock3, Star, Users } from "lucide-react";
+import { ChevronLeft, Clock3, Users } from "lucide-react";
+import { Suspense } from "react";
 import { MediaActions } from "@/components/library/media-actions";
 import { GenreBadge } from "@/components/media/genre-badge";
-import { MediaGrid } from "@/components/media/media-grid";
 import { RatingBadge } from "@/components/media/rating-badge";
-import { ReviewList } from "@/components/reviews/review-list";
-import { MediaRatingSection } from "@/components/ratings/media-rating-section";
-import { CastCarousel } from "@/components/media/cast-carousel";
 import { MEDIA_STATUS_LABELS, MEDIA_TYPE_LABELS } from "@/lib/media/constants";
-import { findMediaById, findSimilarMedia } from "@/lib/media/queries";
+import { findMediaById } from "@/lib/media/queries";
 import { getUserMediaState } from "@/lib/library/queries";
-import { getMediaReviews } from "@/lib/reviews/queries";
-import { calculateTasteMatch } from "@/lib/ratings/similarity";
 import { createClient } from "@/lib/supabase/server";
-import { prisma } from "@/lib/prisma";
-import type { MediaRatingSummary, RatingDistributionItem } from "@/types/rating";
+
+import { SuspendedCastAndPlatforms } from "@/components/media/suspended-cast-and-platforms";
+import { SuspendedRatingSection } from "@/components/ratings/suspended-rating-section";
+import { SuspendedReviewsSection } from "@/components/reviews/suspended-reviews-section";
+import { SuspendedSimilarMedia } from "@/components/media/suspended-similar-media";
 
 export default async function MediaPage({
   params,
@@ -26,6 +24,8 @@ export default async function MediaPage({
   searchParams: Promise<{ reviewsPage?: string }>;
 }) {
   const { id } = await params;
+  
+  // Critical Path Only
   const media = await findMediaById(id);
   if (!media) notFound();
 
@@ -34,24 +34,8 @@ export default async function MediaPage({
     data: { user },
   } = await supabase.auth.getUser();
 
+  const userState = user ? await getUserMediaState(user.id, media.id) : null;
   const reviewsPage = Math.max(1, Number((await searchParams).reviewsPage) || 1);
-  const [similar, userState, reviewData, ratingDistributionQuery, tasteMatch] = await Promise.all([
-    findSimilarMedia(media),
-    user ? getUserMediaState(user.id, media.id) : Promise.resolve(null),
-    getMediaReviews(media.id, user?.id ?? null, reviewsPage),
-    prisma.media.findUnique({ where: { id: media.id }, select: { ratingDistribution: true } }),
-    user ? calculateTasteMatch(user.id, media.id) : Promise.resolve(null),
-  ]);
-  
-  const ratingSummary: MediaRatingSummary = {
-    communityAverageRating: media.communityAverageRating,
-    weightedRating: media.weightedRating,
-    ratingCount: media.ratingCount,
-    popularityScore: media.popularityScore,
-    ratingDistribution: (ratingDistributionQuery?.ratingDistribution as RatingDistributionItem[]) ?? [],
-    currentUserRating: userState?.rating ? { id: userState.rating.id, rating: Number(userState.rating.rating) } : null,
-    tasteMatch,
-  };
 
   const facts = [
     ["Release Date", media.year?.toString() ?? "TBA"],
@@ -61,6 +45,7 @@ export default async function MediaPage({
     ["Status", MEDIA_STATUS_LABELS[media.status]],
     ["Episodes", media.episodeCount?.toString() ?? "Not available"],
   ];
+  
   return (
     <div className="-mx-4 -mt-6 sm:-mx-6 md:-mx-8 md:-mt-8">
       <section className="relative isolate overflow-hidden border-b border-border bg-background">
@@ -74,7 +59,6 @@ export default async function MediaPage({
             className="-z-20 object-cover opacity-40 mix-blend-screen"
           />
         )}
-        {/* Cinematic rich gradients */}
         <div className="absolute inset-0 -z-10 bg-gradient-to-t from-background via-background/80 to-transparent" />
         <div className="absolute inset-0 -z-10 bg-gradient-to-r from-background via-background/60 to-transparent" />
 
@@ -174,57 +158,29 @@ export default async function MediaPage({
           </aside>
         </section>
 
-        {media.credits?.length > 0 && (
-          <CastCarousel credits={media.credits} />
-        )}
-
-        <section>
-          <h2 className="text-xl font-bold">Where to Watch</h2>
-          {media.platforms.length ? (
-            <div className="mt-5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {media.platforms.map((platform) => (
-                <div
-                  key={platform.id}
-                  className="flex flex-col items-center justify-center rounded-xl border border-border bg-card p-4 shadow-sm hover:border-primary/50 transition-colors"
-                >
-                  {platform.logoUrl ? (
-                    <Image src={platform.logoUrl} alt={platform.name} width={48} height={48} className="rounded-lg shadow-sm" />
-                  ) : (
-                    <span className="text-sm font-medium text-center">{platform.name}</span>
-                  )}
-                  {platform.region && (
-                    <span className="mt-2 text-xs text-muted-foreground text-center">
-                      ({platform.region})
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="mt-5 flex items-center justify-center rounded-xl border border-border bg-card p-8 text-center text-muted-foreground shadow-sm">
-              <p>Streaming availability will be added as providers are synchronized.</p>
-            </div>
-          )}
-        </section>
+        <Suspense fallback={<div className="h-64 animate-pulse rounded-xl bg-muted" />}>
+          <SuspendedCastAndPlatforms media={media} />
+        </Suspense>
 
         <section>
           <h2 className="text-xl font-bold mb-6">Rating and Reviews</h2>
-          <MediaRatingSection mediaId={media.id} initialSummary={ratingSummary} />
-          <div className="mt-8">
-            <ReviewList
-              data={reviewData}
-              mediaId={media.id}
-              currentUserId={user?.id ?? null}
+          <Suspense fallback={<div className="h-32 animate-pulse rounded-xl bg-muted mb-8" />}>
+            <SuspendedRatingSection
+              media={media}
+              userId={user?.id ?? null}
+              userRating={userState?.rating ? { id: userState.rating.id, rating: Number(userState.rating.rating) } : null}
             />
-          </div>
+          </Suspense>
+          <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted mt-8" />}>
+            <SuspendedReviewsSection mediaId={media.id} userId={user?.id ?? null} page={reviewsPage} />
+          </Suspense>
         </section>
 
         <section>
           <h2 className="mb-6 text-xl font-bold">Similar titles</h2>
-          <MediaGrid
-            items={similar}
-            emptyMessage="More related titles will appear as the catalog grows."
-          />
+          <Suspense fallback={<div className="h-64 animate-pulse rounded-xl bg-muted" />}>
+            <SuspendedSimilarMedia media={media} />
+          </Suspense>
         </section>
       </div>
     </div>
