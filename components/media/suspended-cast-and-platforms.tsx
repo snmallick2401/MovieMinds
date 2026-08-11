@@ -16,7 +16,7 @@ export async function SuspendedCastAndPlatforms({ media }: { media: MediaDetail 
         <h2 className="text-xl font-bold">Where to Watch</h2>
         {hydrated.platforms.length ? (
           <div className="mt-5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {hydrated.platforms.map((platform) => (
+            {hydrated.platforms.slice(0, 12).map((platform) => (
               <div
                 key={platform.id}
                 className="flex flex-col items-center justify-center rounded-xl border border-border bg-card p-4 shadow-sm hover:border-primary/50 transition-colors"

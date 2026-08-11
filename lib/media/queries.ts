@@ -207,7 +207,7 @@ export async function findSimilarMedia(
       });
       return items.map(serializeMediaSummary);
     },
-    [`similar-${media.id}`],
+    [`similar-v2-${media.id}`],
     { revalidate: 3600, tags: ["similar-media"] }
   );
 
