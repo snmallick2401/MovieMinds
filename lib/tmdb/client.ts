@@ -17,6 +17,7 @@ type TmdbItem = {
   first_air_date?: string;
   genre_ids?: number[];
   genre_names?: string[];
+  genres?: Array<{ id: number; name: string }>;
   original_language?: string;
   origin_country?: string[];
   vote_average?: number;
@@ -130,7 +131,8 @@ function normalizeTmdb(
     ),
     seasonCount: item.number_of_seasons ?? null,
     episodeCount: item.number_of_episodes ?? null,
-    genres: (item.genre_names ??
+    genres: (item.genres?.map(g => g.name) ??
+      item.genre_names ??
       item.genre_ids?.map((id) => genreMap.get(id)).filter(Boolean) ??
       []) as string[],
   };
