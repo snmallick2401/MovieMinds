@@ -9,7 +9,8 @@ export function formatJoinDate(date: Date) {
   return new Intl.DateTimeFormat("en", { month: "long", year: "numeric" }).format(date);
 }
 
-export function initials(name: string) {
+export function initials(name?: string) {
+  if (!name) return "?";
   return name
     .split(/\s+/)
     .filter(Boolean)

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Menu } from "lucide-react";
+
 import type { ReactNode } from "react";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { SearchBar } from "@/components/search/search-bar";
 import { NavigationLinks } from "@/components/navigation/navigation-links";
 import { SignOutButton } from "@/components/layout/sign-out-button";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { MobileMenu } from "@/components/layout/mobile-menu";
 import type { Profile } from "@/types/profile";
 
 export function AppShell({
@@ -44,14 +45,7 @@ export function AppShell({
       </aside>
       <div className="pb-16 md:pb-0 md:pl-64">
         <header className="sticky top-0 z-10 flex h-16 items-center gap-3 border-b border-border bg-background/85 px-4 backdrop-blur md:px-8">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden"
-            aria-label="Navigation menu"
-          >
-            <Menu className="size-5" />
-          </Button>
+          <MobileMenu profile={profile} />
           <div className="hidden max-w-md flex-1 sm:block">
             <SearchBar />
           </div>

@@ -149,6 +149,18 @@ Phase 5.2 transforms MovieMinds from a review platform into a rich community dis
 - **Rich Forum Syntax & Formatting**: Lightweight Markdown + custom forum extensions including BBCode-style spoilers (`[spoiler]text[/spoiler]`), quotes (`> quote`), user mentions (`@username`), and auto-embeds.
 - **Reactions & Reputation System**: Real-time reaction counters (Like, Heart, Flame, Mindblown, Sad, Laugh) on posts and threads, directly influencing user reputation scores (`reputationScore`).
 - **Resilient Media & Provider Sync**: Fail-fast background hydration for TMDb and AniList platforms, cast, and crew with default fallback UI grids and fast timeouts to protect against ISP-blocked network environments.
+## Phase 5.3: v5.3.2 - UI Refinement & Community Expansion
+
+Phase 5.3 shifts the project to a mature release state (`v5.3.2`), focusing on deep UI/UX polishing, immersive theming, and rich community interactions.
+
+### Key Enhancements
+
+- **Immersive Micro-Interactions**: Custom CSS-driven animated components replacing generic libraries. Features include a fully animated "Zoro Santoryu" (Three-Sword Style) hamburger navigation drawer with haki glow effects, and a custom BB-8 light/dark mode switch.
+- **Rich Post Formatting**: Advanced BBCode parsing supporting custom image embeds (`[img]`), rich text (`[b]`, `[i]`), quotes (`[quote]`), and external link auto-formatting.
+- **Community Engagement**: Animated heart-shaped "Like" buttons on forum posts, custom user titles and badges (e.g., dynamic "Elite Critic" badges for high-reputation users), and integrated report/quote actions.
+- **Robust Layout Architecture**: Improved z-index stacking context handling, React Portal utilization for overlays and drawers, escaping backdrop-blur CSS filter constraints.
+- **Responsive Design**: Redesigned native-app style bottom navigation bar for mobile with a strict 5-item layout, complemented by an edge-to-edge slide-out drawer for deep navigation.
+- **Theme Synergies**: Comprehensive replacement of hardcoded color tokens with semantic Tailwind CSS variables (`bg-card`, `bg-muted`, etc.) ensuring seamless light/dark mode transitions across all community forums and threads.
 
 ## Deployment
 

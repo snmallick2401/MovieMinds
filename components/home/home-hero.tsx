@@ -37,7 +37,7 @@ export function HomeHero({
               Welcome back
             </span>
             <h1 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl text-white">
-              Welcome back, <span className="text-purple-400">{userName}</span>.
+              Welcome back, <span className="text-purple-400 whitespace-nowrap">{userName}</span>.
             </h1>
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/70 sm:text-base">
               Build your watchlist, keep track of every story, and find your next obsession.

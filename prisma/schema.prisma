@@ -423,28 +423,39 @@ model MediaPerson {
   @@map("media_people")
 }
 
-model DiscussionThread {
-  id            String   @id @default(cuid())
-  mediaId       String
-  userId        String   @db.Uuid
-  title         String   @db.VarChar(255)
-  body          String   @db.Text
-  spoiler       Boolean  @default(false)
-  pinned        Boolean  @default(false)
-  locked        Boolean  @default(false)
-  replyCount    Int      @default(0)
-  viewCount     Int      @default(0)
-  reactionCount Int      @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+enum ThreadCategory {
+  GENERAL
+  SPOILERS
+  THEORIES
+  RECOMMENDATIONS
+  NEWS
+  FAN_ART
+}
 
-  media    Media            @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+model DiscussionThread {
+  id            String         @id @default(cuid())
+  mediaId       String?
+  category      ThreadCategory @default(GENERAL)
+  userId        String         @db.Uuid
+  title         String         @db.VarChar(255)
+  body          String         @db.Text
+  spoiler       Boolean        @default(false)
+  pinned        Boolean        @default(false)
+  locked        Boolean        @default(false)
+  replyCount    Int            @default(0)
+  viewCount     Int            @default(0)
+  reactionCount Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  media    Media?           @relation(fields: [mediaId], references: [id], onDelete: Cascade)
   user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   posts    DiscussionPost[]
   watchers ThreadWatch[]
 
   @@index([mediaId, createdAt(sort: Desc)])
   @@index([mediaId, replyCount(sort: Desc)])
+  @@index([category, createdAt(sort: Desc)])
   @@map("discussion_threads")
 }
 
