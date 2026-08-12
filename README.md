@@ -139,6 +139,17 @@ Phase 5 turns MovieMinds into a connected social platform (a Letterboxd + Goodre
 - **Notifications & Smart Grouping**: Notification center (`/notifications`) with real-time grouping for multiple follow or interaction events (*"Jane Doe and 2 others started following you"*).
 - **Database Performance & Indexing**: Optimized schema indexes across `Activity`, `Follow`, and `Notification` tables for fast sorting and aggregation as the user base grows.
 
+## Phase 5.2: v0.5.2 - Community Discussions & Threaded Conversations
+
+Phase 5.2 transforms MovieMinds from a review platform into a rich community discussion ecosystem. Every movie, TV series, anime, actor, and creator features active, dedicated discussion threads alongside general film/anime category forums.
+
+### Key Forum & Discussion Features
+
+- **Discussion Threads & Routing**: Dedicated thread ecosystems (`/media/[id]/community/[threadId]`) with category filters (`GENERAL`, `SPOILERS`, `THEORIES`, `RECOMMENDATIONS`, `NEWS`, `FAN_ART`).
+- **Rich Forum Syntax & Formatting**: Lightweight Markdown + custom forum extensions including BBCode-style spoilers (`[spoiler]text[/spoiler]`), quotes (`> quote`), user mentions (`@username`), and auto-embeds.
+- **Reactions & Reputation System**: Real-time reaction counters (Like, Heart, Flame, Mindblown, Sad, Laugh) on posts and threads, directly influencing user reputation scores (`reputationScore`).
+- **Resilient Media & Provider Sync**: Fail-fast background hydration for TMDb and AniList platforms, cast, and crew with default fallback UI grids and fast timeouts to protect against ISP-blocked network environments.
+
 ## Deployment
 
 Deploy the repository to Vercel, configure the three environment variables in Vercel project settings, and add your production `https://your-domain/auth/callback` redirect URL in Supabase. Run the profile SQL migration once in the production Supabase project.

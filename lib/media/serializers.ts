@@ -39,6 +39,8 @@ export function serializeMediaSummary(media: MediaWithSummaryRelations): MediaSu
     voteCount: media.voteCount,
     popularity: media.popularity,
     genres: media.genres.map(({ genre }) => ({ id: genre.id, name: genre.name })),
+    sourceUpdatedAt: media.sourceUpdatedAt?.toISOString() ?? null,
+    lastSyncedAt: media.lastSyncedAt?.toISOString() ?? null,
   };
 }
 
@@ -92,6 +94,8 @@ export function normalizedToSummary(media: import("@/types/media").NormalizedMed
     voteCount: media.voteCount,
     popularity: media.popularity,
     genres: media.genres.map((name, i) => ({ id: `ext-g-${i}`, name })),
+    sourceUpdatedAt: media.sourceUpdatedAt?.toISOString() ?? null,
+    lastSyncedAt: new Date().toISOString(),
   };
 }
 

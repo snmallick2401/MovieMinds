@@ -109,8 +109,14 @@ export async function findMedia(filters: MediaFilters = {}): Promise<PaginatedMe
 
   // 2. Fetch from external sources only if there is a query, and catch errors
   const [tmdbResults, anilistResults] = await Promise.all([
-    searchTmdb(filters.query).catch((err) => { console.warn("TMDB search failed:", err); return []; }),
-    searchAniList(filters.query).catch((err) => { console.warn("AniList search failed:", err); return []; }),
+    searchTmdb(filters.query).catch((err) => { 
+      console.warn("TMDB search failed:", err instanceof Error ? err.message : String(err)); 
+      return []; 
+    }),
+    searchAniList(filters.query).catch((err) => { 
+      console.warn("AniList search failed:", err instanceof Error ? err.message : String(err)); 
+      return []; 
+    }),
   ]);
 
   const externalItems = [...tmdbResults, ...anilistResults];
@@ -172,7 +178,14 @@ export async function findMediaById(id: string): Promise<MediaDetail | null> {
  * Call this from a Suspense boundary so it doesn't block the critical render path.
  */
 export async function hydrateMediaDetails(media: MediaDetail): Promise<MediaDetail> {
-  if (media.credits.length > 0 && media.platforms.length > 0) return media;
+  // Only auto-hydrate if the media hasn't been synced in the last 7 days
+  // Some media genuinely have 0 credits or 0 platforms, so checking length causes infinite fetches
+  const isStale = !media.sourceUpdatedAt || 
+    (new Date().getTime() - new Date(media.sourceUpdatedAt).getTime() > 7 * 24 * 60 * 60 * 1000);
+
+  if (!isStale && media.credits && media.platforms) {
+    return media;
+  }
 
   try {
     const refreshed = await refreshMedia(media.source, media.sourceId, media.mediaType as any);
@@ -181,7 +194,8 @@ export async function hydrateMediaDetails(media: MediaDetail): Promise<MediaDeta
       return serializeMediaDetail(reFetched);
     }
   } catch (err) {
-    console.warn(`Failed auto-hydrating credits for ${media.title}:`, err);
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`Failed auto-hydrating credits for ${media.title}: ${msg}`);
   }
   
   return media;

@@ -46,6 +46,8 @@ export type MediaSummary = {
   voteCount: number;
   popularity: number;
   genres: MediaGenre[];
+  sourceUpdatedAt: string | null;
+  lastSyncedAt: string | null;
 };
 
 export type MediaCredit = {

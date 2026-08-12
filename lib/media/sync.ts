@@ -215,20 +215,31 @@ export async function upsertMedia(
     };
   }).filter((x): x is NonNullable<typeof x> => x !== null);
 
-  await prisma.$transaction([
-    prisma.mediaGenre.deleteMany({ where: { mediaId: record.id } }),
-    prisma.mediaPlatform.deleteMany({ where: { mediaId: record.id } }),
-    prisma.mediaPerson.deleteMany({ where: { mediaId: record.id } }),
-    ...(mediaGenreData.length > 0
-      ? [prisma.mediaGenre.createMany({ data: mediaGenreData, skipDuplicates: true })]
-      : []),
-    ...(mediaPlatformData.length > 0
-      ? [prisma.mediaPlatform.createMany({ data: mediaPlatformData, skipDuplicates: true })]
-      : []),
-    ...(mediaPersonData.length > 0
-      ? [prisma.mediaPerson.createMany({ data: mediaPersonData, skipDuplicates: true })]
-      : []),
-  ]);
+  const isDetailSync = media.credits !== undefined && media.platforms !== undefined;
+
+  const transactions: any[] = [];
+  
+  if (isDetailSync) {
+    transactions.push(
+      prisma.mediaGenre.deleteMany({ where: { mediaId: record.id } }),
+      prisma.mediaPlatform.deleteMany({ where: { mediaId: record.id } }),
+      prisma.mediaPerson.deleteMany({ where: { mediaId: record.id } })
+    );
+
+    if (mediaGenreData.length > 0)
+      transactions.push(prisma.mediaGenre.createMany({ data: mediaGenreData, skipDuplicates: true }));
+    if (mediaPlatformData.length > 0)
+      transactions.push(prisma.mediaPlatform.createMany({ data: mediaPlatformData, skipDuplicates: true }));
+    if (mediaPersonData.length > 0)
+      transactions.push(prisma.mediaPerson.createMany({ data: mediaPersonData, skipDuplicates: true }));
+  } else if (mediaGenreData.length > 0) {
+    // For summary syncs, we only safely merge new genres without wiping anything
+    transactions.push(prisma.mediaGenre.createMany({ data: mediaGenreData, skipDuplicates: true }));
+  }
+
+  if (transactions.length > 0) {
+    await prisma.$transaction(transactions);
+  }
 
   return record;
 }
@@ -321,6 +332,9 @@ export async function refreshMedia(
     source === "TMDB"
       ? await fetchTmdbDetails(sourceId, mediaType === "TV" ? "TV" : "MOVIE")
       : await fetchAniListDetails(sourceId);
+      
+  normalized.sourceUpdatedAt = new Date();
+  
   return upsertMedia(normalized);
 }
 

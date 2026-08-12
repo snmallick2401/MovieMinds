@@ -60,27 +60,32 @@ export async function tmdbFetch<T>(path: string, init?: RequestInit): Promise<T>
   if (!apiKey) throw new Error("TMDB_API_KEY is not configured.");
   let lastError: unknown;
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3000); // 3s timeout for fail-fast
     try {
       const response = await fetch(
         `${TMDB_BASE_URL}${path}${path.includes("?") ? "&" : "?"}api_key=${apiKey}`,
-        (() => {
-          const headers = new Headers(init?.headers);
-          headers.set("accept", "application/json");
-          headers.set("user-agent", "MovieMinds/0.2");
-          return { ...init, headers, next: { revalidate: 60 * 60 * 6 }, signal: controller.signal };
-        })(),
+        {
+          ...init,
+          signal: init?.signal ?? AbortSignal.timeout(3000),
+          headers: {
+            ...init?.headers,
+            accept: "application/json",
+            "user-agent": "MovieMinds/0.2",
+          },
+          next: { revalidate: 60 * 60 * 6 },
+        }
       );
-      clearTimeout(timeout);
       if (!response.ok)
         throw new Error(`TMDb request failed (${response.status}) for ${path}.`);
       return response.json() as Promise<T>;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
-      clearTimeout(timeout);
       lastError = error;
-      if (error.name === 'AbortError' || error.code === 'UND_ERR_CONNECT_TIMEOUT') {
+      if (
+        error.name === 'AbortError' ||
+        error.name === 'TimeoutError' ||
+        error.code === 'UND_ERR_CONNECT_TIMEOUT' ||
+        error.cause?.code === 'UND_ERR_CONNECT_TIMEOUT'
+      ) {
         console.warn(`TMDb connection failed for ${path}. Failing fast.`);
         throw error; // Fail immediately on network unreachability
       }
@@ -163,16 +168,25 @@ export async function fetchTmdbCollection(
 
 export async function fetchTmdbDetails(sourceId: string, type: "MOVIE" | "TV") {
   const kind = type === "TV" ? "tv" : "movie";
-  const [item, genres, providers] = await Promise.all([
+  const results = await Promise.allSettled([
     tmdbFetch<TmdbItem>(`/${kind}/${sourceId}?append_to_response=credits`),
     getTmdbGenres(kind),
-    tmdbFetch<TmdbProvidersResponse>(`/${kind}/${sourceId}/watch/providers`).catch(
-      (err) => {
-        console.warn(`Failed to fetch TMDb providers for ${kind} ${sourceId}:`, err);
-        return { results: {} } as TmdbProvidersResponse;
-      }
-    ),
+    tmdbFetch<TmdbProvidersResponse>(`/${kind}/${sourceId}/watch/providers`),
   ]);
+
+  if (results[0].status === "rejected") {
+    throw results[0].reason; // The main item fetch failed, we must abort
+  }
+  const item = results[0].value;
+
+  const genres = results[1].status === "fulfilled" ? results[1].value : new Map<number, string>();
+  
+  let providers = { results: {} } as TmdbProvidersResponse;
+  if (results[2].status === "fulfilled") {
+    providers = results[2].value;
+  } else {
+    console.warn(`Failed to fetch TMDb providers for ${kind} ${sourceId}:`, results[2].reason);
+  }
   const normalized = normalizeTmdb(item, kind, genres);
   const regionalProviders = Object.values(providers.results ?? {}).flatMap(
     (region) =>

@@ -11,38 +11,46 @@ datasource db {
 /// Profile data complements the identity stored in Supabase's auth.users table.
 /// IDs are intentionally shared with Supabase Auth UUIDs.
 model User {
-  id            String         @id @db.Uuid
-  email         String         @unique
-  username      String         @unique @db.VarChar(30)
-  displayName   String         @db.VarChar(80)
-  avatarUrl     String?        @db.Text
-  bio           String?        @db.VarChar(500)
-  libraryPublic    Boolean        @default(true)
-  bannerUrl        String?        @db.Text
-  accentColor      String?        @db.VarChar(7)
-  favoriteGenres   String[]       @default([])
-  favoriteCreators String[]       @default([])
-  favoriteServices String[]       @default([])
-  showRatings      Boolean        @default(true)
-  showReviews      Boolean        @default(true)
-  showStats        Boolean        @default(true)
-  showActivity     Boolean        @default(true)
-  showFavorites    Boolean        @default(true)
-  hideAdult        Boolean        @default(true)
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-  library          UserLibrary[]
-  ratings          UserRating[]
-  reviews          Review[]
-  watchHistory     WatchHistory[]
-  wishlist         Wishlist[]
-  favorites        UserFavorite[]
-  activities       Activity[]
-  following        Follow[]       @relation("following")
-  followers        Follow[]       @relation("followers")
-  notifications    Notification[] @relation("received_notifications")
-  sentNotifications Notification[] @relation("sent_notifications")
-  targetedActivities Activity[]   @relation("target_user")
+  id                 String         @id @db.Uuid
+  email              String         @unique
+  username           String         @unique @db.VarChar(30)
+  displayName        String         @db.VarChar(80)
+  avatarUrl          String?        @db.Text
+  bio                String?        @db.VarChar(500)
+  libraryPublic      Boolean        @default(true)
+  bannerUrl          String?        @db.Text
+  accentColor        String?        @db.VarChar(7)
+  favoriteGenres     String[]       @default([])
+  favoriteCreators   String[]       @default([])
+  favoriteServices   String[]       @default([])
+  showRatings        Boolean        @default(true)
+  showReviews        Boolean        @default(true)
+  showStats          Boolean        @default(true)
+  showActivity       Boolean        @default(true)
+  showFavorites      Boolean        @default(true)
+  hideAdult          Boolean        @default(true)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  library            UserLibrary[]
+  ratings            UserRating[]
+  reviews            Review[]
+  watchHistory       WatchHistory[]
+  wishlist           Wishlist[]
+  favorites          UserFavorite[]
+  activities         Activity[]
+  following          Follow[]       @relation("following")
+  followers          Follow[]       @relation("followers")
+  notifications      Notification[] @relation("received_notifications")
+  sentNotifications  Notification[] @relation("sent_notifications")
+  targetedActivities Activity[]     @relation("target_user")
+
+  // Community Discussions
+  reputationScore     Int                  @default(0)
+  discussionThreads   DiscussionThread[]
+  discussionPosts     DiscussionPost[]
+  discussionReactions DiscussionReaction[]
+  threadWatches       ThreadWatch[]
+  mentions            Mention[]            @relation("UserMentions")
 
   @@map("profiles")
 }
@@ -84,47 +92,48 @@ enum ReviewVisibility {
 }
 
 model Media {
-  id                String          @id @default(cuid())
-  source            MediaSource
-  sourceId          String
-  title             String
-  originalTitle     String?
-  alternativeTitles String[]        @default([])
-  description       String?         @db.Text
-  posterUrl         String?         @db.Text
-  backdropUrl       String?         @db.Text
-  releaseDate       DateTime?
-  year              Int?
-  runtime           Int?
-  language          String?
-  country           String?
-  mediaType         MediaType
-  status            MediaStatus     @default(RELEASED)
-  contentRating     String?
-  averageRating     Float?
-  communityAverageRating Decimal? @db.Decimal(3, 2)
-  ratingCount       Int             @default(0)
-  weightedRating    Decimal?        @db.Decimal(3, 2)
-  ratingDistribution Json?
-  popularityScore   Float           @default(0)
-  voteCount         Int             @default(0)
-  popularity        Float           @default(0)
-  seasonCount       Int?
-  episodeCount      Int?
-  sourceUpdatedAt   DateTime?
-  lastSyncedAt      DateTime        @default(now())
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  genres            MediaGenre[]
-  platforms         MediaPlatform[]
-  libraryEntries    UserLibrary[]
-  ratings           UserRating[]
-  reviews           Review[]
-  watchHistory      WatchHistory[]
-  wishlistEntries   Wishlist[]
-  userFavorites     UserFavorite[]
-  activities        Activity[]
-  credits           MediaPerson[]
+  id                     String             @id @default(cuid())
+  source                 MediaSource
+  sourceId               String
+  title                  String
+  originalTitle          String?
+  alternativeTitles      String[]           @default([])
+  description            String?            @db.Text
+  posterUrl              String?            @db.Text
+  backdropUrl            String?            @db.Text
+  releaseDate            DateTime?
+  year                   Int?
+  runtime                Int?
+  language               String?
+  country                String?
+  mediaType              MediaType
+  status                 MediaStatus        @default(RELEASED)
+  contentRating          String?
+  averageRating          Float?
+  communityAverageRating Decimal?           @db.Decimal(3, 2)
+  ratingCount            Int                @default(0)
+  weightedRating         Decimal?           @db.Decimal(3, 2)
+  ratingDistribution     Json?
+  popularityScore        Float              @default(0)
+  voteCount              Int                @default(0)
+  popularity             Float              @default(0)
+  seasonCount            Int?
+  episodeCount           Int?
+  sourceUpdatedAt        DateTime?
+  lastSyncedAt           DateTime           @default(now())
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  genres                 MediaGenre[]
+  platforms              MediaPlatform[]
+  libraryEntries         UserLibrary[]
+  ratings                UserRating[]
+  reviews                Review[]
+  watchHistory           WatchHistory[]
+  wishlistEntries        Wishlist[]
+  userFavorites          UserFavorite[]
+  activities             Activity[]
+  credits                MediaPerson[]
+  discussionThreads      DiscussionThread[]
 
   @@unique([source, sourceId])
   @@index([mediaType, popularity])
@@ -215,14 +224,14 @@ model UserLibrary {
 }
 
 model UserRating {
-  id        String   @id @default(cuid())
-  userId    String   @db.Uuid
-  mediaId   String
-  rating    Decimal  @db.Decimal(3, 1)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  media     Media    @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  id         String     @id @default(cuid())
+  userId     String     @db.Uuid
+  mediaId    String
+  rating     Decimal    @db.Decimal(3, 1)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media      Media      @relation(fields: [mediaId], references: [id], onDelete: Cascade)
   activities Activity[]
 
   @@unique([userId, mediaId])
@@ -320,11 +329,11 @@ model Activity {
   metadata     Json?
   createdAt    DateTime     @default(now())
 
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  media        Media?       @relation(fields: [mediaId], references: [id], onDelete: Cascade)
-  review       Review?      @relation(fields: [reviewId], references: [id], onDelete: Cascade)
-  rating       UserRating?  @relation(fields: [ratingId], references: [id], onDelete: Cascade)
-  targetUser   User?        @relation("target_user", fields: [targetUserId], references: [id], onDelete: Cascade)
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media      Media?      @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  review     Review?     @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  rating     UserRating? @relation(fields: [ratingId], references: [id], onDelete: Cascade)
+  targetUser User?       @relation("target_user", fields: [targetUserId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([createdAt(sort: Desc)])
@@ -336,8 +345,8 @@ model Follow {
   followingId String   @db.Uuid
   createdAt   DateTime @default(now())
 
-  follower    User     @relation("following", fields: [followerId], references: [id], onDelete: Cascade)
-  following   User     @relation("followers", fields: [followingId], references: [id], onDelete: Cascade)
+  follower  User @relation("following", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("followers", fields: [followingId], references: [id], onDelete: Cascade)
 
   @@id([followerId, followingId])
   @@index([followerId, createdAt(sort: Desc)])
@@ -353,21 +362,27 @@ enum NotificationType {
   MENTION
   RECOMMENDATION
   LIST_FOLLOWED
+  THREAD_REPLY
+  THREAD_QUOTE
+  THREAD_MENTION
+  THREAD_REACTION
+  THREAD_BEST_REPLY
+  THREAD_WATCH_UPDATE
 }
 
 model Notification {
-  id          String           @id @default(cuid())
-  userId      String           @db.Uuid
-  actorId     String           @db.Uuid
-  type        NotificationType
-  read        Boolean          @default(false)
-  mediaId     String?
-  reviewId    String?
-  metadata    Json?
-  createdAt   DateTime         @default(now())
+  id        String           @id @default(cuid())
+  userId    String           @db.Uuid
+  actorId   String           @db.Uuid
+  type      NotificationType
+  read      Boolean          @default(false)
+  mediaId   String?
+  reviewId  String?
+  metadata  Json?
+  createdAt DateTime         @default(now())
 
-  user        User             @relation("received_notifications", fields: [userId], references: [id], onDelete: Cascade)
-  actor       User             @relation("sent_notifications", fields: [actorId], references: [id], onDelete: Cascade)
+  user  User @relation("received_notifications", fields: [userId], references: [id], onDelete: Cascade)
+  actor User @relation("sent_notifications", fields: [actorId], references: [id], onDelete: Cascade)
 
   @@index([userId, read, createdAt(sort: Desc)])
   @@index([createdAt(sort: Desc)])
@@ -392,18 +407,134 @@ enum PersonRole {
 }
 
 model MediaPerson {
-  id         String        @id @default(cuid())
+  id         String     @id @default(cuid())
   mediaId    String
   personId   String
   role       PersonRole
-  character  String?       @db.VarChar(200)
-  job        String?       @db.VarChar(100)
-  department String?       @db.VarChar(100)
-  order      Int           @default(0)
-  media      Media         @relation(fields: [mediaId], references: [id], onDelete: Cascade)
-  person     Person        @relation(fields: [personId], references: [id], onDelete: Cascade)
+  character  String?    @db.VarChar(200)
+  job        String?    @db.VarChar(100)
+  department String?    @db.VarChar(100)
+  order      Int        @default(0)
+  media      Media      @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  person     Person     @relation(fields: [personId], references: [id], onDelete: Cascade)
 
   @@index([mediaId, role, order])
   @@index([personId])
   @@map("media_people")
+}
+
+model DiscussionThread {
+  id            String   @id @default(cuid())
+  mediaId       String
+  userId        String   @db.Uuid
+  title         String   @db.VarChar(255)
+  body          String   @db.Text
+  spoiler       Boolean  @default(false)
+  pinned        Boolean  @default(false)
+  locked        Boolean  @default(false)
+  replyCount    Int      @default(0)
+  viewCount     Int      @default(0)
+  reactionCount Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  media    Media            @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  posts    DiscussionPost[]
+  watchers ThreadWatch[]
+
+  @@index([mediaId, createdAt(sort: Desc)])
+  @@index([mediaId, replyCount(sort: Desc)])
+  @@map("discussion_threads")
+}
+
+model DiscussionPost {
+  id            String    @id @default(cuid())
+  threadId      String
+  userId        String    @db.Uuid
+  parentId      String? // Self-relation for nested replies
+  body          String    @db.Text
+  editedAt      DateTime?
+  reactionCount Int       @default(0)
+  bestReply     Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+
+  thread      DiscussionThread       @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user        User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent      DiscussionPost?        @relation("PostReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies     DiscussionPost[]       @relation("PostReplies")
+  reactions   DiscussionReaction[]
+  mentions    Mention[]
+  attachments DiscussionAttachment[]
+
+  @@index([threadId, createdAt(sort: Asc)])
+  @@map("discussion_posts")
+}
+
+model DiscussionAttachment {
+  id        String   @id @default(cuid())
+  postId    String
+  imageId   String // Goonbox image ID
+  pageUrl   String // https://goonbox.cr/img/xxxxx
+  imageUrl  String // full resolution
+  thumbUrl  String // optimized thumbnail
+  width     Int?
+  height    Int?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  post DiscussionPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId, sortOrder])
+  @@map("discussion_attachments")
+}
+
+enum ReactionType {
+  LIKE
+  LOVE
+  FIRE
+  MIND_BLOWN
+  FUNNY
+  CRY
+  AGREE
+}
+
+model DiscussionReaction {
+  id           String       @id @default(cuid())
+  userId       String       @db.Uuid
+  postId       String
+  reactionType ReactionType
+  createdAt    DateTime     @default(now())
+
+  user User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post DiscussionPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@map("discussion_reactions")
+}
+
+model ThreadWatch {
+  id        String   @id @default(cuid())
+  userId    String   @db.Uuid
+  threadId  String
+  createdAt DateTime @default(now())
+
+  user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  thread DiscussionThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, threadId])
+  @@map("thread_watches")
+}
+
+model Mention {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  post DiscussionPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User           @relation("UserMentions", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@map("mentions")
 }
