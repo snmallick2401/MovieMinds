@@ -1,28 +1,21 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { findMedia } from "@/lib/media/queries";
-import { searchTmdb } from "@/lib/tmdb/client";
-import { searchAniList } from "@/lib/anilist/client";
-import { normalizedToSummary } from "@/lib/media/serializers";
-import { autoPersistSearchResults } from "@/lib/media/expansion";
+
+const searchCache = new Map<string, { items: any[]; timestamp: number }>();
+const CACHE_TTL_MS = 60 * 1000; // 1 minute in-memory cache for search responses
 
 export async function GET(request: NextRequest) {
   const query = request.nextUrl.searchParams.get("q")?.trim();
   if (!query) return NextResponse.json({ items: [] });
 
-  const [dbResult, tmdbResults, anilistResults] = await Promise.all([
-    findMedia({ query, pageSize: 8, sort: "popular" }),
-    searchTmdb(query),
-    searchAniList(query),
-  ]);
+  const cacheKey = query.toLowerCase();
+  const cached = searchCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return NextResponse.json({ items: cached.items });
+  }
 
-  const externalItems = [...tmdbResults, ...anilistResults];
-  autoPersistSearchResults(externalItems).catch(() => {});
+  const result = await findMedia({ query, pageSize: 10, sort: "popular" });
+  searchCache.set(cacheKey, { items: result.items, timestamp: Date.now() });
 
-  const dbTitles = new Set(dbResult.items.map((i) => i.title.toLowerCase()));
-  const externalSummaries = externalItems
-    .filter((m) => !dbTitles.has(m.title.toLowerCase()))
-    .map(normalizedToSummary);
-
-  const merged = [...dbResult.items, ...externalSummaries].slice(0, 10);
-  return NextResponse.json({ items: merged });
+  return NextResponse.json({ items: result.items });
 }

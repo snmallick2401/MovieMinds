@@ -5,7 +5,7 @@ import { RecommendedRow } from "@/components/home/recommended-row";
 import { TrendingNowRow } from "@/components/home/trending-now-row";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
-import { getExploreSections } from "@/lib/media/queries";
+import { getExploreSections, getPersonalizedRecommendations } from "@/lib/media/queries";
 import { getLibraryDashboard, getUserStats } from "@/lib/library/queries";
 
 export default async function HomePage() {
@@ -25,7 +25,7 @@ export default async function HomePage() {
     // Guest fallback
   }
 
-  const [dbUser, stats, exploreSections, dashboard] = await Promise.all([
+  const [dbUser, stats, exploreSections, dashboard, personalizedRecommendations] = await Promise.all([
     userId
       ? prisma.user.findUnique({ where: { id: userId } }).catch(() => null)
       : Promise.resolve(null),
@@ -48,6 +48,7 @@ export default async function HomePage() {
     userId
       ? getLibraryDashboard(userId).catch(() => ({ items: [], wishlist: [] }))
       : Promise.resolve({ items: [], wishlist: [] }),
+    getPersonalizedRecommendations(userId, 6).catch(() => []),
   ]);
 
   const userName =
@@ -77,7 +78,13 @@ export default async function HomePage() {
       <TrendingNowRow items={exploreSections.trending} />
 
       {/* Recommended For You Section with Match % */}
-      <RecommendedRow items={exploreSections.topRated} />
+      <RecommendedRow
+        items={
+          personalizedRecommendations.length > 0
+            ? personalizedRecommendations
+            : exploreSections.topRated
+        }
+      />
 
       {/* Recent Activity Section */}
       <RecentActivityRow fallbackMedia={exploreSections.popularMovies} />

@@ -38,7 +38,8 @@ export function serializeMediaSummary(media: MediaWithSummaryRelations): MediaSu
     popularityScore: media.popularityScore,
     voteCount: media.voteCount,
     popularity: media.popularity,
-    genres: media.genres.map(({ genre }) => ({ id: genre.id, name: genre.name })),
+    genres: media.genres ? media.genres.map(({ genre }) => ({ id: genre.id, name: genre.name })) : [],
+
     sourceUpdatedAt: media.sourceUpdatedAt?.toISOString() ?? null,
     lastSyncedAt: media.lastSyncedAt?.toISOString() ?? null,
   };

@@ -87,32 +87,29 @@ const DETAIL_QUERY = `
 export async function anilistFetch<T>(
   query: string,
   variables: Record<string, unknown>,
+  signal?: AbortSignal,
 ): Promise<T> {
-  let lastError: unknown;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      const response = await fetch(ANILIST_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ query, variables }),
-        next: { revalidate: 60 * 60 * 6 },
-      });
-      const body = (await response.json()) as T & { errors?: Array<{ message: string }> };
-      if (!response.ok || body.errors?.length)
-        throw new Error(
-          body.errors?.[0]?.message ?? `AniList request failed (${response.status}).`,
-        );
-      return body;
-    } catch (error) {
-      lastError = error;
-      if (attempt < 2)
-        await new Promise((resolve) => setTimeout(resolve, 350 * 2 ** attempt));
-    }
+  if (signal?.aborted) throw new Error("Aborted");
+  try {
+    const response = await fetch(ANILIST_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ query, variables }),
+      signal: signal ?? AbortSignal.timeout(2000),
+      next: { revalidate: 60 * 60 * 6 },
+    });
+
+    const body = (await response.json()) as T & { errors?: Array<{ message: string }> };
+    if (!response.ok || body.errors?.length)
+      throw new Error(
+        body.errors?.[0]?.message ?? `AniList request failed (${response.status}).`,
+      );
+    return body;
+  } catch (error) {
+    throw error;
   }
-  throw new Error(
-    `AniList request failed: ${lastError instanceof Error ? lastError.message : "network error"}`,
-  );
 }
+
 
 function stripHtml(value?: string | null) {
   return (
@@ -246,14 +243,19 @@ const SEARCH_QUERY = `
   }
 `;
 
-export async function searchAniList(query: string): Promise<NormalizedMedia[]> {
+export async function searchAniList(query: string, signal?: AbortSignal): Promise<NormalizedMedia[]> {
   if (!query.trim()) return [];
   try {
-    const response = await anilistFetch<AniListResponse>(SEARCH_QUERY, {
-      search: query,
-      page: 1,
-      perPage: 10,
-    });
+    const response = await anilistFetch<AniListResponse>(
+      SEARCH_QUERY,
+      {
+        search: query,
+        page: 1,
+        perPage: 10,
+      },
+      signal,
+    );
+
     return (response.data?.Page?.media ?? []).map(normalizeAniList);
   } catch {
     return [];

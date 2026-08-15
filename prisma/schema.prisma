@@ -549,3 +549,17 @@ model Mention {
   @@unique([postId, userId])
   @@map("mentions")
 }
+
+model NewsArticle {
+  id          String   @id @default(cuid())
+  source      String   @db.VarChar(100)
+  title       String   @db.VarChar(500)
+  url         String   @unique @db.Text
+  imageUrl    String?  @db.Text
+  summary     String?  @db.Text
+  publishedAt DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([publishedAt(sort: Desc)])
+  @@map("news_articles")
+}

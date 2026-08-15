@@ -5,17 +5,37 @@ export const mediaForLibrary = {
   genres: { include: { genre: true } },
 } satisfies Prisma.MediaInclude;
 
-type StoredLibraryMedia = Omit<LibraryEntry["media"], "releaseDate" | "genres" | "communityAverageRating" | "weightedRating"> & {
+type StoredLibraryMedia = Omit<
+  LibraryEntry["media"],
+  | "releaseDate"
+  | "genres"
+  | "communityAverageRating"
+  | "weightedRating"
+  | "sourceUpdatedAt"
+  | "lastSyncedAt"
+> & {
   releaseDate: Date | null;
   genres: Array<{ genre: { id: string; name: string } }>;
   communityAverageRating: Prisma.Decimal | null;
   weightedRating: Prisma.Decimal | null;
+  sourceUpdatedAt?: Date | null;
+  lastSyncedAt?: Date | null;
 };
-type StoredWishlistMedia = Omit<WishlistEntry["media"], "releaseDate" | "genres" | "communityAverageRating" | "weightedRating"> & {
+type StoredWishlistMedia = Omit<
+  WishlistEntry["media"],
+  | "releaseDate"
+  | "genres"
+  | "communityAverageRating"
+  | "weightedRating"
+  | "sourceUpdatedAt"
+  | "lastSyncedAt"
+> & {
   releaseDate: Date | null;
   genres: Array<{ genre: { id: string; name: string } }>;
   communityAverageRating: Prisma.Decimal | null;
   weightedRating: Prisma.Decimal | null;
+  sourceUpdatedAt?: Date | null;
+  lastSyncedAt?: Date | null;
 };
 type StoredLibraryEntry = Omit<
   LibraryEntry,
@@ -67,6 +87,8 @@ export function serializeLibraryEntry(entry: StoredLibraryEntry): LibraryEntry {
       episodeCount: media.episodeCount,
       runtime: media.runtime,
       genres: media.genres.map(({ genre }) => ({ id: genre.id, name: genre.name })),
+      sourceUpdatedAt: media.sourceUpdatedAt?.toISOString() ?? null,
+      lastSyncedAt: media.lastSyncedAt?.toISOString() ?? null,
     },
   };
 }
@@ -97,6 +119,8 @@ export function serializeWishlistEntry(entry: StoredWishlistEntry): WishlistEntr
       voteCount: media.voteCount,
       popularity: media.popularity,
       genres: media.genres.map(({ genre }) => ({ id: genre.id, name: genre.name })),
+      sourceUpdatedAt: media.sourceUpdatedAt?.toISOString() ?? null,
+      lastSyncedAt: media.lastSyncedAt?.toISOString() ?? null,
     },
   };
 }

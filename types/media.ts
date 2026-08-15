@@ -46,8 +46,10 @@ export type MediaSummary = {
   voteCount: number;
   popularity: number;
   genres: MediaGenre[];
-  sourceUpdatedAt: string | null;
-  lastSyncedAt: string | null;
+  sourceUpdatedAt?: string | null;
+  lastSyncedAt?: string | null;
+  matchPercentage?: number;
+  recommendationReason?: string;
 };
 
 export type MediaCredit = {
@@ -101,7 +103,19 @@ export type PaginatedMedia = {
   totalPages: number;
 };
 
-export type NormalizedMedia = Omit<MediaDetail, "id" | "genres" | "platforms" | "communityAverageRating" | "ratingCount" | "weightedRating" | "popularityScore" | "credits"> & {
+export type NormalizedMedia = Omit<
+  MediaDetail,
+  | "id"
+  | "genres"
+  | "platforms"
+  | "communityAverageRating"
+  | "ratingCount"
+  | "weightedRating"
+  | "popularityScore"
+  | "credits"
+  | "sourceUpdatedAt"
+  | "lastSyncedAt"
+> & {
   sourceUpdatedAt?: Date;
   genres: string[];
   platforms?: Array<{

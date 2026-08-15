@@ -47,14 +47,17 @@ export const getLibraryDashboard = async (
   return getCachedDashboard(userId);
 }
 
-export async function getUserMediaState(userId: string, mediaId: string) {
+import { cache } from "react";
+
+export const getUserMediaState = cache(async (userId: string, mediaId: string) => {
   const [library, wishlist, rating] = await Promise.all([
     prisma.userLibrary.findUnique({ where: { userId_mediaId: { userId, mediaId } } }),
     prisma.wishlist.findUnique({ where: { userId_mediaId: { userId, mediaId } } }),
     prisma.userRating.findUnique({ where: { userId_mediaId: { userId, mediaId } } }),
   ]);
   return { library, wishlist, rating };
-}
+});
+
 
 import { unstable_cache } from "next/cache";
 

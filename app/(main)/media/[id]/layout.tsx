@@ -20,15 +20,15 @@ export default async function MediaLayout({
 }) {
   const { id } = await params;
   
-  const media = await findMediaById(id);
+  const mediaPromise = findMediaById(id);
+  const supabasePromise = createClient().then((client) => client.auth.getUser());
+
+  const [media, { data: authData }] = await Promise.all([mediaPromise, supabasePromise]);
   if (!media) notFound();
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = authData.user;
   const userState = user ? await getUserMediaState(user.id, media.id) : null;
+
 
   return (
     <div className="-mx-4 -mt-6 sm:-mx-6 md:-mx-8 md:-mt-8">

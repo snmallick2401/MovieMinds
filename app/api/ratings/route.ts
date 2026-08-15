@@ -68,7 +68,16 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ rating: { id: rating.record.id, mediaId: rating.record.mediaId, rating: Number(rating.record.rating), createdAt: rating.record.createdAt.toISOString(), updatedAt: rating.record.updatedAt.toISOString() }, summary: { communityAverageRating: rating.summary.communityAverageRating ? Number(rating.summary.communityAverageRating) : null, weightedRating: rating.summary.weightedRating ? Number(rating.summary.weightedRating) : null, ratingCount: rating.summary.ratingCount, popularityScore: rating.summary.popularityScore, ratingDistribution: rating.summary.ratingDistribution } });
-  } catch {
-    return NextResponse.json({ error: "Could not save rating." }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error && error.message === "UNAUTHORIZED"
+            ? "Unauthorized"
+            : "Could not save rating.",
+      },
+      { status: error instanceof Error && error.message === "UNAUTHORIZED" ? 401 : 500 },
+    );
   }
 }
+

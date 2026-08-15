@@ -15,7 +15,7 @@ export async function createThread(formData: FormData) {
 
   if (!title || !body) throw new Error("Title and body are required");
 
-  let category = ThreadCategory.GENERAL;
+  let category: ThreadCategory = ThreadCategory.GENERAL;
   if (Object.values(ThreadCategory).includes(categoryStr as ThreadCategory)) {
     category = categoryStr as ThreadCategory;
   }

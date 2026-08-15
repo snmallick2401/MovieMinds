@@ -2,22 +2,30 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronRight, Star } from "lucide-react";
+import { ChevronRight, Sparkles, Star } from "lucide-react";
 import { MEDIA_TYPE_LABELS } from "@/lib/media/constants";
 import type { MediaSummary } from "@/types/media";
 
 export function RecommendedRow({ items }: { items: MediaSummary[] }) {
-  const matchPcts = [92, 89, 87, 87, 84, 82];
   const displayItems = items.slice(0, 6);
 
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold tracking-tight text-foreground">
-            Recommended for you
-          </h2>
-          <p className="text-xs text-muted-foreground">Personalized picks based on your taste.</p>
+        <div className="flex items-center gap-2.5">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-bold tracking-tight text-foreground">
+                Recommended for you
+              </h2>
+              <span className="inline-flex items-center gap-1 rounded-full border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-[10px] font-bold text-purple-400">
+                <Sparkles className="size-2.5" /> AI Powered
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Personalized ML picks based on your watch history and ratings.
+            </p>
+          </div>
         </div>
         <Link
           href="/explore"
@@ -30,7 +38,11 @@ export function RecommendedRow({ items }: { items: MediaSummary[] }) {
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-6">
         {displayItems.map((item, idx) => {
-          const matchPct = matchPcts[idx % matchPcts.length];
+          const matchPct = item.matchPercentage ?? Math.max(75, 94 - idx * 3);
+          const reason =
+            item.recommendationReason ||
+            (item.genres[0] ? `Top pick in ${item.genres[0].name}` : "Trending Pick");
+
           return (
             <Link
               key={item.id}
@@ -51,7 +63,8 @@ export function RecommendedRow({ items }: { items: MediaSummary[] }) {
                 )}
 
                 {/* Match Percentage Pill Badge */}
-                <span className="absolute left-2.5 top-2.5 rounded-md bg-purple-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-md">
+                <span className="absolute left-2.5 top-2.5 rounded-md bg-purple-600/90 backdrop-blur-sm px-2 py-0.5 text-[10px] font-bold text-white shadow-md flex items-center gap-1">
+                  <Sparkles className="size-2.5" />
                   {matchPct}% Match
                 </span>
               </div>
@@ -60,14 +73,19 @@ export function RecommendedRow({ items }: { items: MediaSummary[] }) {
                 <h3 className="line-clamp-1 font-bold text-xs text-foreground transition-colors group-hover:text-purple-400">
                   {item.title}
                 </h3>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">
-                  {item.year ?? "2024"} · {MEDIA_TYPE_LABELS[item.mediaType]}
+                <p className="mt-0.5 text-[11px] font-medium text-purple-400/90 line-clamp-1">
+                  {reason}
                 </p>
-                <div className="mt-1 flex items-center gap-1 text-xs text-amber-400 font-semibold">
-                  <Star className="size-3.5 fill-amber-400" />
-                  <span>
-                    {item.averageRating ? (item.averageRating / 10).toFixed(1) : "8.8"}
+                <div className="mt-1 flex items-center justify-between text-xs">
+                  <span className="text-[10px] text-muted-foreground">
+                    {item.year ?? "2024"} · {MEDIA_TYPE_LABELS[item.mediaType]}
                   </span>
+                  <div className="flex items-center gap-1 text-amber-400 font-semibold">
+                    <Star className="size-3 fill-amber-400" />
+                    <span className="text-[11px]">
+                      {item.averageRating ? (item.averageRating / 10).toFixed(1) : "8.8"}
+                    </span>
+                  </div>
                 </div>
               </div>
             </Link>

@@ -58,50 +58,36 @@ function mapStatus(status?: string): NormalizedMedia["status"] {
 export async function tmdbFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const apiKey = process.env.TMDB_API_KEY;
   if (!apiKey) throw new Error("TMDB_API_KEY is not configured.");
-  let lastError: unknown;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      const response = await fetch(
-        `${TMDB_BASE_URL}${path}${path.includes("?") ? "&" : "?"}api_key=${apiKey}`,
-        {
-          ...init,
-          signal: init?.signal ?? AbortSignal.timeout(3000),
-          headers: {
-            ...init?.headers,
-            accept: "application/json",
-            "user-agent": "MovieMinds/0.2",
-          },
-          next: { revalidate: 60 * 60 * 6 },
-        }
-      );
-      if (!response.ok)
-        throw new Error(`TMDb request failed (${response.status}) for ${path}.`);
-      return response.json() as Promise<T>;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      lastError = error;
-      if (
-        error.name === 'AbortError' ||
-        error.name === 'TimeoutError' ||
-        error.code === 'UND_ERR_CONNECT_TIMEOUT' ||
-        error.cause?.code === 'UND_ERR_CONNECT_TIMEOUT'
-      ) {
-        console.warn(`TMDb connection failed for ${path}. Failing fast.`);
-        throw error; // Fail immediately on network unreachability
+  if (init?.signal?.aborted) throw new Error("Aborted");
+  try {
+    const response = await fetch(
+      `${TMDB_BASE_URL}${path}${path.includes("?") ? "&" : "?"}api_key=${apiKey}`,
+      {
+        ...init,
+        signal: init?.signal ?? AbortSignal.timeout(2000),
+        headers: {
+          ...init?.headers,
+          accept: "application/json",
+          "user-agent": "MovieMinds/0.2",
+        },
+        next: { revalidate: 60 * 60 * 6 },
       }
-      if (attempt < 2)
-        await new Promise((resolve) => setTimeout(resolve, 350 * 2 ** attempt));
-    }
+    );
+    if (!response.ok)
+      throw new Error(`TMDb request failed (${response.status}) for ${path}.`);
+    return response.json() as Promise<T>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: any) {
+    throw error;
   }
-  throw new Error(
-    `TMDb request failed for ${path}: ${lastError instanceof Error ? lastError.message : "network error"}`,
-  );
 }
 
-export async function getTmdbGenres(kind: "movie" | "tv") {
-  const response = await tmdbFetch<TmdbGenreResponse>(`/genre/${kind}/list`);
+
+export async function getTmdbGenres(kind: "movie" | "tv", signal?: AbortSignal) {
+  const response = await tmdbFetch<TmdbGenreResponse>(`/genre/${kind}/list`, { signal });
   return new Map(response.genres.map((genre) => [genre.id, genre.name]));
 }
+
 
 function normalizeTmdb(
   item: TmdbItem,
@@ -221,14 +207,19 @@ export async function fetchTmdbDetails(sourceId: string, type: "MOVIE" | "TV") {
   return normalized;
 }
 
-export async function searchTmdb(query: string): Promise<NormalizedMedia[]> {
+export async function searchTmdb(query: string, signal?: AbortSignal): Promise<NormalizedMedia[]> {
   if (!query.trim()) return [];
   try {
-    const movieGenres = await getTmdbGenres("movie");
-    const tvGenres = await getTmdbGenres("tv");
+    const [movieGenres, tvGenres] = await Promise.all([
+      getTmdbGenres("movie", signal).catch(() => new Map<number, string>()),
+      getTmdbGenres("tv", signal).catch(() => new Map<number, string>()),
+    ]);
     const response = await tmdbFetch<TmdbResponse & { results?: Array<TmdbItem & { media_type?: string }> }>(
       `/search/multi?query=${encodeURIComponent(query)}&include_adult=false`,
+      { signal },
     );
+
+
     return (response.results ?? [])
       .filter((item) => item.media_type === "movie" || item.media_type === "tv" || !item.media_type)
       .slice(0, 10)
