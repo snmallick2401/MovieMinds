@@ -78,7 +78,8 @@ export const getUserMediaState = cache(async (userId: string, mediaId: string) =
       wishlist: row.wishlist ?? null,
       rating: row.rating ? { ...row.rating, rating: Number(row.rating.rating) } : null,
     };
-  } catch {
+  } catch (error) {
+    logger.error({ msg: "Raw query failed in getUserMediaState", error });
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {

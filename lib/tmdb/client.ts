@@ -112,7 +112,7 @@ function normalizeTmdb(
     mediaType: kind === "tv" ? "TV" : "MOVIE",
     status: mapStatus(item.status),
     contentRating: null,
-    averageRating: item.vote_average ? Number((item.vote_average * 10).toFixed(1)) : null,
+    averageRating: item.vote_average ? Number(((item.vote_average / 10) * 7).toFixed(2)) : null,
     voteCount: item.vote_count ?? 0,
     popularity: Number(
       (

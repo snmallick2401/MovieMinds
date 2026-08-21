@@ -21,6 +21,7 @@ export type MediaWithDetailRelations = MediaWithSummaryRelations & {
 export function serializeMediaSummary(media: MediaWithSummaryRelations): MediaSummary {
   return {
     id: media.id,
+    slug: media.slug ?? null,
     source: media.source,
     sourceId: media.sourceId,
     title: media.title,
@@ -79,6 +80,7 @@ export function serializeMediaDetail(media: MediaWithDetailRelations): MediaDeta
 export function normalizedToSummary(media: import("@/types/media").NormalizedMedia): MediaSummary {
   return {
     id: `${media.source.toLowerCase()}-${media.sourceId}`,
+    slug: null,
     source: media.source,
     sourceId: media.sourceId,
     title: media.title,

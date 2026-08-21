@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
@@ -27,6 +28,7 @@ export async function PATCH(request: Request) {
         libraryPublic: parsed.data.libraryPublic ?? true,
       },
     });
+    revalidateTag("user-profile");
     return NextResponse.json({ profile });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")

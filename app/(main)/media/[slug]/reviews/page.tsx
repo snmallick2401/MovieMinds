@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { findMediaById } from "@/lib/media/queries";
+import { findMediaBySlugOrId } from "@/lib/media/queries";
 import { getUserMediaState } from "@/lib/library/queries";
 import { createClient } from "@/lib/supabase/server";
 import { SuspendedRatingSection } from "@/components/ratings/suspended-rating-section";
@@ -10,11 +10,11 @@ export default async function MediaReviewsPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
   searchParams: Promise<{ reviewsPage?: string }>;
 }) {
-  const { id } = await params;
-  const media = await findMediaById(id);
+  const { slug } = await params;
+  const media = await findMediaBySlugOrId(slug);
   if (!media) notFound();
 
   const supabase = await createClient();

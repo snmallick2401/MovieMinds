@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronRight, Sparkles, Star } from "lucide-react";
+import { ChevronRight, Sparkles } from "lucide-react";
+import { RatingBadge } from "@/components/media/rating-badge";
 import { MEDIA_TYPE_LABELS } from "@/lib/media/constants";
 import type { MediaSummary } from "@/types/media";
 
@@ -46,7 +47,7 @@ export function RecommendedRow({ items }: { items: MediaSummary[] }) {
           return (
             <Link
               key={item.id}
-              href={`/media/${item.id}`}
+              href={`/media/${item.slug ?? item.id}`}
               className="group flex flex-col justify-between overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-purple-500/40 hover:shadow-xl"
             >
               <div className="relative aspect-[2/3] w-full overflow-hidden bg-muted">
@@ -80,12 +81,7 @@ export function RecommendedRow({ items }: { items: MediaSummary[] }) {
                   <span className="text-[10px] text-muted-foreground">
                     {item.year ?? "2024"} · {MEDIA_TYPE_LABELS[item.mediaType]}
                   </span>
-                  <div className="flex items-center gap-1 text-amber-400 font-semibold">
-                    <Star className="size-3 fill-amber-400" />
-                    <span className="text-[11px]">
-                      {item.averageRating ? (item.averageRating / 10).toFixed(1) : "8.8"}
-                    </span>
-                  </div>
+                  <RatingBadge rating={item.averageRating} />
                 </div>
               </div>
             </Link>

@@ -39,6 +39,7 @@ export function ModernProfileView({
     createdAt: Date;
     media: {
       id: string;
+      slug: string | null;
       title: string;
       mediaType:
         "MOVIE" | "TV" | "ANIME" | "ANIME_MOVIE" | "OVA" | "DOCUMENTARY" | "SPECIAL";

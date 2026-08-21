@@ -1,7 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronRight, Eye, Star } from "lucide-react";
+import { ChevronRight, Eye, MessageSquare } from "lucide-react";
 import { MEDIA_TYPE_LABELS } from "@/lib/media/constants";
+import { RatingBadge } from "@/components/media/rating-badge";
 import { formatJoinDate } from "@/lib/utils";
 
 type ReviewItem = {
@@ -13,6 +14,7 @@ type ReviewItem = {
   createdAt: Date;
   media: {
     id: string;
+    slug: string | null;
     title: string;
     mediaType:
       "MOVIE" | "TV" | "ANIME" | "ANIME_MOVIE" | "OVA" | "DOCUMENTARY" | "SPECIAL";
@@ -60,7 +62,7 @@ export function RecentlyReviewedCard({ reviews }: { reviews: ReviewItem[] }) {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-1">
                       <Link
-                        href={`/media/${review.media.id}`}
+                        href={`/media/${review.media.slug ?? review.media.id}`}
                         className="truncate text-sm font-bold text-foreground hover:text-purple-400"
                       >
                         {review.media.title}
@@ -72,17 +74,7 @@ export function RecentlyReviewedCard({ reviews }: { reviews: ReviewItem[] }) {
                       {review.media.year ?? "TBA"}
                     </p>
                     <div className="mt-1 flex items-center gap-1">
-                      {Array.from({ length: 5 }).map((_, index) => (
-                        <Star
-                          key={index}
-                          className="size-3 fill-purple-400 text-purple-400"
-                        />
-                      ))}
-                      <span className="ml-1 text-xs font-bold text-foreground">
-                        {review.media.averageRating
-                          ? (review.media.averageRating / 10).toFixed(1)
-                          : "10.0"}
-                      </span>
+                      <RatingBadge rating={review.media.averageRating} />
                     </div>
                   </div>
                 </div>

@@ -192,7 +192,7 @@ export function normalizeAniList(item: AniListMedia): NormalizedMedia {
     mediaType: mapFormat(item.format),
     status: mapStatus(item.status),
     contentRating: item.isAdult ? "R" : null,
-    averageRating: item.averageScore ?? null,
+    averageRating: item.averageScore ? Number(((item.averageScore / 100) * 7).toFixed(2)) : null,
     voteCount: item.favourites ?? 0,
     popularity: Number(
       (

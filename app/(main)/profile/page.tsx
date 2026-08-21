@@ -21,6 +21,7 @@ export default async function ProfilePage() {
           media: {
             select: {
               id: true,
+              slug: true,
               title: true,
               mediaType: true,
               year: true,

@@ -104,7 +104,7 @@ export function SearchBar({ compact = false }: { compact?: boolean }) {
               {items.map((media) => (
                 <Link
                   key={media.id}
-                  href={`/media/${media.id}`}
+                  href={`/media/${media.slug ?? media.id}`}
                   onClick={() => setOpen(false)}
                   className="flex items-center justify-between gap-3 rounded-lg px-3 py-2 hover:bg-muted"
                 >

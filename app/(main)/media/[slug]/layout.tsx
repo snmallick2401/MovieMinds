@@ -1,13 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { ChevronLeft, Clock3, Users } from "lucide-react";
 import { Suspense } from "react";
 import { MediaActions } from "@/components/library/media-actions";
 import { RatingBadge } from "@/components/media/rating-badge";
 import { MEDIA_STATUS_LABELS, MEDIA_TYPE_LABELS } from "@/lib/media/constants";
-import { findMediaById } from "@/lib/media/queries";
-import { getUserMediaState } from "@/lib/library/queries";
+import { findMediaBySlugOrId } from "@/lib/media/queries";
+import { MediaActionsWrapper } from "@/components/library/media-actions-wrapper";
 import { createClient } from "@/lib/supabase/server";
 import { MediaTabs } from "@/components/media/media-tabs";
 
@@ -16,33 +16,33 @@ export default async function MediaLayout({
   params,
 }: {
   children: React.ReactNode;
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }) {
   const t0 = performance.now();
-  const { id } = await params;
+  const { slug } = await params;
   
   const tMediaStart = performance.now();
-  const mediaPromise = findMediaById(id);
+  const mediaPromise = findMediaBySlugOrId(slug);
   const supabasePromise = createClient().then((client) => client.auth.getUser());
 
   const [media, { data: authData }] = await Promise.all([mediaPromise, supabasePromise]);
   const tMediaLoaded = performance.now();
   if (!media) notFound();
 
-  const user = authData.user;
-  const tUserStart = performance.now();
-  const userState = user ? await getUserMediaState(user.id, media.id) : null;
-  const tUserLoaded = performance.now();
+  // 308 Permanent Redirect: if accessed by a CUID (legacy URL), redirect to the canonical slug URL
+  const isCuid = /^c[a-z0-9]{24,}$/.test(slug);
+  if (isCuid && media.slug && media.slug !== slug) {
+    permanentRedirect(`/media/${media.slug}`);
+  }
 
+  const user = authData.user;
   console.log(JSON.stringify({
     level: "info",
     tag: "TIMING_MEDIA_LAYOUT",
-    mediaId: id,
+    mediaId: media.slug ?? slug,
     mediaFindMs: Math.round(tMediaLoaded - tMediaStart),
-    userStateMs: Math.round(tUserLoaded - tUserStart),
-    totalLayoutMs: Math.round(tUserLoaded - t0),
+    totalLayoutMs: Math.round(tMediaLoaded - t0),
   }));
-
 
   return (
     <div className="-mx-4 -mt-6 sm:-mx-6 md:-mx-8 md:-mt-8">
@@ -113,16 +113,31 @@ export default async function MediaLayout({
                   </span>
                 )}
               </div>
-              <div className="mt-8">
-                <MediaActions
-                  mediaId={media.id}
-                  initialStatus={userState?.library?.status ?? null}
-                  inWishlist={Boolean(userState?.wishlist)}
-                  initialRating={userState?.rating?.rating ? Number(userState.rating.rating) : null}
-                  initialProgress={userState?.library?.progress ?? 0}
-                  episodeCount={media.episodeCount}
-                  libraryEntryId={userState?.library?.id ?? null}
-                />
+              <div className="mt-8 min-h-[40px]">
+                {user ? (
+                  <Suspense fallback={
+                    <div className="flex gap-2">
+                      <div className="h-10 w-32 animate-pulse rounded-md bg-muted" />
+                      <div className="h-10 w-10 animate-pulse rounded-md bg-muted" />
+                    </div>
+                  }>
+                    <MediaActionsWrapper
+                      mediaId={media.id}
+                      episodeCount={media.episodeCount}
+                      userId={user.id}
+                    />
+                  </Suspense>
+                ) : (
+                  <MediaActions
+                    mediaId={media.id}
+                    initialStatus={null}
+                    inWishlist={false}
+                    initialRating={null}
+                    initialProgress={0}
+                    episodeCount={media.episodeCount}
+                    libraryEntryId={null}
+                  />
+                )}
               </div>
             </div>
           </div>

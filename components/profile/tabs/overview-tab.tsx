@@ -8,7 +8,7 @@ type ProfileWithFavorites = Prisma.UserGetPayload<{
   include: {
     favorites: {
       include: {
-        media: { select: { id: true, title: true, posterUrl: true, year: true, mediaType: true } }
+        media: { select: { id: true, slug: true, title: true, posterUrl: true, year: true, mediaType: true } }
       }
     }
   }

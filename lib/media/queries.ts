@@ -9,6 +9,7 @@ import {
   serializeMediaDetail,
   serializeMediaSummary,
 } from "@/lib/media/serializers";
+import { getCachedUser } from "@/lib/profile";
 import { searchTmdb, fetchTmdbDetails } from "@/lib/tmdb/client";
 import { searchAniList, fetchAniListDetails } from "@/lib/anilist/client";
 import type {
@@ -201,9 +202,31 @@ const fetchDbMediaDetail = (id: string) =>
     { revalidate: 3600, tags: [`media-${id}`] }
   )();
 
-export const findMediaById = cache(async (id: string): Promise<MediaDetail | null> => {
-  if (id.startsWith("tmdb-")) {
-    const sourceId = id.replace("tmdb-", "");
+const fetchDbMediaDetailBySlug = (slug: string) =>
+  unstable_cache(
+    async () => {
+      const media = await prisma.media.findUnique({ 
+        where: { slug }, 
+        include: detailRelations,
+        relationLoadStrategy: "join" 
+      });
+      return media ? serializeMediaDetail(media) : null;
+    },
+    [`media-detail-slug-${slug}`],
+    { revalidate: 3600, tags: [`media-slug-${slug}`] }
+  )();
+
+/**
+ * Find media by slug (primary), then by database ID, then by external source IDs.
+ * Previously called findMediaById - now supports SEO slug routing.
+ */
+export const findMediaBySlugOrId = cache(async (slugOrId: string): Promise<MediaDetail | null> => {
+  // Check if it looks like a CUID (database ID)
+  const isCuid = /^c[a-z0-9]{24,}$/.test(slugOrId);
+
+  // External source IDs
+  if (slugOrId.startsWith("tmdb-")) {
+    const sourceId = slugOrId.replace("tmdb-", "");
     try {
       const normalized = await fetchTmdbDetails(sourceId, "MOVIE");
       return normalizedToDetail(normalized);
@@ -217,8 +240,8 @@ export const findMediaById = cache(async (id: string): Promise<MediaDetail | nul
     }
   }
 
-  if (id.startsWith("anilist-")) {
-    const sourceId = id.replace("anilist-", "");
+  if (slugOrId.startsWith("anilist-")) {
+    const sourceId = slugOrId.replace("anilist-", "");
     try {
       const normalized = await fetchAniListDetails(sourceId);
       return normalizedToDetail(normalized);
@@ -227,8 +250,17 @@ export const findMediaById = cache(async (id: string): Promise<MediaDetail | nul
     }
   }
 
-  return fetchDbMediaDetail(id);
+  // Database ID (CUID format) - used for backward compatibility redirect
+  if (isCuid) {
+    return fetchDbMediaDetail(slugOrId);
+  }
+
+  // SEO slug lookup (primary path for new URLs)
+  return fetchDbMediaDetailBySlug(slugOrId);
 });
+
+/** @deprecated Use findMediaBySlugOrId instead */
+export const findMediaById = findMediaBySlugOrId;
 
 const inFlightHydrations = new Set<string>();
 
@@ -253,19 +285,28 @@ export async function hydrateMediaDetails(media: MediaDetail): Promise<MediaDeta
     inFlightHydrations.add(media.id);
     try {
       if (typeof after === "function") {
-        after(async () => {
-          try {
-            await refreshMedia(media.source, media.sourceId, media.mediaType as any);
-          } catch {
-            // Background sync error handled gracefully
-          } finally {
-            inFlightHydrations.delete(media.id);
-          }
-        });
-      } else {
-        inFlightHydrations.delete(media.id);
+        try {
+          after(async () => {
+            try {
+              const { revalidateTag } = await import("next/cache");
+              revalidateTag(`media-${media.id}`);
+              revalidateTag("catalog");
+            } catch {}
+          });
+        } catch {}
       }
+
+      await refreshMedia(media.source, media.sourceId, media.mediaType as any);
+      inFlightHydrations.delete(media.id);
+
+      const freshMedia = await prisma.media.findUnique({
+        where: { id: media.id },
+        include: detailRelations,
+        relationLoadStrategy: "join"
+      });
+      if (freshMedia) return serializeMediaDetail(freshMedia);
     } catch {
+      // Background sync error handled gracefully
       inFlightHydrations.delete(media.id);
     }
   }
@@ -325,7 +366,7 @@ const getCachedRecs = unstable_cache(
 
     // 2. Fetch User's library, ratings, and profile for AI engine
     const [userProfile, library, ratings, favorites] = await Promise.all([
-      prisma.user.findUnique({ where: { id: userId }, select: { favoriteGenres: true } }).catch(() => null),
+      getCachedUser(userId).catch(() => null),
       prisma.userLibrary.findMany({ where: { userId } }).catch(() => []),
       prisma.userRating.findMany({ where: { userId } }).catch(() => []),
       prisma.userFavorite.findMany({ where: { userId } }).catch(() => []),
@@ -499,17 +540,33 @@ export const getExploreSections = unstable_cache(
   async () => {
     const query = async (filters: MediaFilters, limit = 8) =>
       (await findMedia({ ...filters, pageSize: limit }, { skipCount: true })).items;
+    
+    const [
+      trending,
+      popularMovies,
+      popularAnime,
+      topRated,
+      newReleases,
+      upcoming,
+      recentlyAdded
+    ] = await Promise.all([
+      query({ sort: "popular" }),
+      query({ types: ["MOVIE"], sort: "popular" }),
+      query({ types: ["ANIME", "ANIME_MOVIE", "OVA"], sort: "popular" }),
+      query({ sort: "rating" }),
+      query({ sort: "newest", statuses: ["RELEASED", "FINISHED"] }),
+      query({ sort: "newest", statuses: ["UPCOMING"] }),
+      query({ sort: "recent" }),
+    ]);
+
     return {
-      trending: await query({ sort: "popular" }),
-      popularMovies: await query({ types: ["MOVIE"], sort: "popular" }),
-      popularAnime: await query({
-        types: ["ANIME", "ANIME_MOVIE", "OVA"],
-        sort: "popular",
-      }),
-      topRated: await query({ sort: "rating" }),
-      newReleases: await query({ sort: "newest", statuses: ["RELEASED", "FINISHED"] }),
-      upcoming: await query({ sort: "newest", statuses: ["UPCOMING"] }),
-      recentlyAdded: await query({ sort: "recent" }),
+      trending,
+      popularMovies,
+      popularAnime,
+      topRated,
+      newReleases,
+      upcoming,
+      recentlyAdded,
     };
   },
   ["explore-sections"],

@@ -44,16 +44,18 @@ export function AppShell({
         </div>
       </aside>
       <div className="pb-16 md:pb-0 md:pl-64">
-        <header className="sticky top-0 z-10 flex h-16 items-center gap-3 border-b border-border bg-background/85 px-4 backdrop-blur md:px-8">
-          <MobileMenu profile={profile} />
-          <div className="hidden max-w-md flex-1 sm:block">
-            <SearchBar />
-          </div>
-          <div className="ml-auto flex items-center gap-1">
-            <ThemeToggle />
-            <Link href="/profile" aria-label="Open profile">
-              <Avatar name={profile.displayName} src={profile.avatarUrl} />
-            </Link>
+        <header className="sticky top-0 z-10 border-b border-border bg-background/85 backdrop-blur">
+          <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-4 px-4 sm:px-6 md:px-8">
+            <MobileMenu profile={profile} />
+            <div className="hidden max-w-md flex-1 sm:block">
+              <SearchBar />
+            </div>
+            <div className="ml-auto flex items-center gap-2">
+              <ThemeToggle />
+              <Link href="/profile" aria-label="Open profile" className="transition-opacity hover:opacity-85">
+                <Avatar name={profile.displayName} src={profile.avatarUrl} />
+              </Link>
+            </div>
           </div>
         </header>
         <main className="mx-auto w-full max-w-7xl animate-fade-in px-4 py-6 sm:px-6 md:px-8 md:py-8">

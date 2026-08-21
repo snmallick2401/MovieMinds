@@ -4,6 +4,7 @@ import { SlidersHorizontal, X, Search, ChevronDown, ChevronUp } from "lucide-rea
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { DragonBall } from "@/components/icons/dragon-ball";
 import {
   CONTENT_RATINGS,
   FEATURED_PLATFORMS,
@@ -314,18 +315,27 @@ export function FilterControls({ genres }: { genres: Genre[] }) {
           aria-label="Minimum rating"
           type="range"
           min="0"
-          max="10"
+          max="7"
           step="0.5"
-          value={Number(minRating) > 10 ? Number(minRating) / 10 : minRating}
+          value={minRating}
           onChange={(event) =>
-            setValue("minRating", event.target.value === "0" ? "" : (Number(event.target.value) * 10).toString())
+            setValue("minRating", event.target.value === "0" ? "" : event.target.value)
           }
-          className="w-full accent-purple-600"
+          className="w-full accent-orange-500"
         />
         <div className="flex justify-between text-[11px] text-muted-foreground mt-1 font-medium">
           <span>0</span>
-          <span>{Number(minRating) > 10 ? (Number(minRating) / 10).toFixed(1) : Number(minRating).toFixed(1)} and up</span>
-          <span>10</span>
+          <span className="inline-flex items-center gap-1 font-semibold text-orange-400">
+            {Number(minRating) > 0 ? (
+              <>
+                <DragonBall stars={Math.max(1, Math.min(7, Math.round(Number(minRating))))} size={13} active />
+                {Number(minRating).toFixed(1)} &amp; up
+              </>
+            ) : (
+              "Any"
+            )}
+          </span>
+          <span>7</span>
         </div>
       </fieldset>
     </div>

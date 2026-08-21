@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronRight, Star } from "lucide-react";
+import { ChevronRight } from "lucide-react";
+import { RatingBadge } from "@/components/media/rating-badge";
 import { MEDIA_TYPE_LABELS } from "@/lib/media/constants";
 import type { MediaSummary } from "@/types/media";
 
@@ -33,7 +34,7 @@ export function TrendingNowRow({ items }: { items: MediaSummary[] }) {
         {displayItems.map((item) => (
           <Link
             key={item.id}
-            href={`/media/${item.id}`}
+            href={`/media/${item.slug ?? item.id}`}
             className="group flex flex-col justify-between overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-purple-500/40 hover:shadow-xl"
           >
             <div className="relative aspect-[2/3] w-full overflow-hidden bg-muted">
@@ -57,11 +58,8 @@ export function TrendingNowRow({ items }: { items: MediaSummary[] }) {
               <h3 className="line-clamp-1 font-bold text-xs text-foreground transition-colors group-hover:text-purple-400">
                 {item.title}
               </h3>
-              <div className="mt-1 flex items-center gap-1 text-xs text-amber-400 font-semibold">
-                <Star className="size-3.5 fill-amber-400" />
-                <span>
-                  {item.averageRating ? (item.averageRating / 10).toFixed(1) : "8.6"}
-                </span>
+              <div className="mt-1 flex items-center gap-1">
+                <RatingBadge rating={item.averageRating} />
               </div>
             </div>
           </Link>

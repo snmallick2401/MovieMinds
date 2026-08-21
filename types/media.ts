@@ -30,6 +30,7 @@ export type MediaPlatform = {
 
 export type MediaSummary = {
   id: string;
+  slug: string | null;
   source: MediaSource;
   sourceId: string;
   title: string;
@@ -106,6 +107,7 @@ export type PaginatedMedia = {
 export type NormalizedMedia = Omit<
   MediaDetail,
   | "id"
+  | "slug"
   | "genres"
   | "platforms"
   | "communityAverageRating"

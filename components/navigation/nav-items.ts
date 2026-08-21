@@ -8,12 +8,14 @@ import {
   LayoutList,
   Users,
   Bell,
+  Newspaper,
 } from "lucide-react";
 
 export const navItems = [
   { href: "/", label: "Home", icon: House },
   { href: "/feed", label: "Feed", icon: LayoutList },
   { href: "/explore", label: "Explore", icon: Compass },
+  { href: "/news", label: "News", icon: Newspaper },
   { href: "/people", label: "People", icon: Users },
   { href: "/library", label: "My Library", icon: Library },
   { href: "/stats", label: "Stats", icon: BarChart3 },

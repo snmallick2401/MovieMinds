@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { MessageSquarePlus, MessageCircle, Eye, ThumbsUp } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { findMediaById } from "@/lib/media/queries";
+import { findMediaBySlugOrId } from "@/lib/media/queries";
 import { getDiscussionThreads, ThreadSort } from "@/lib/discussions/queries";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
@@ -11,11 +11,11 @@ export default async function MediaCommunityPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
   searchParams: Promise<{ sort?: string; page?: string }>;
 }) {
-  const { id } = await params;
-  const media = await findMediaById(id);
+  const { slug } = await params;
+  const media = await findMediaBySlugOrId(slug);
   if (!media) notFound();
 
   const sp = await searchParams;

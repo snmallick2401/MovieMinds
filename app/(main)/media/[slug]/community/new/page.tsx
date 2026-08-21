@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 export default function NewThreadPage({
   params: paramsPromise,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }) {
   const params = use(paramsPromise);
   const router = useRouter();
@@ -27,7 +27,7 @@ export default function NewThreadPage({
 
     setIsSubmitting(true);
     try {
-      const res = await fetch(`/api/media/${params.id}/discussions`, {
+      const res = await fetch(`/api/media/${params.slug}/discussions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, body, spoiler }),
@@ -36,7 +36,7 @@ export default function NewThreadPage({
       if (!res.ok) throw new Error("Failed to create thread");
       
       const { thread } = await res.json();
-      router.push(`/media/${params.id}/community/${thread.id}`);
+      router.push(`/media/${params.slug}/community/${thread.id}`);
       router.refresh();
     } catch (err) {
       console.error(err);
@@ -48,7 +48,7 @@ export default function NewThreadPage({
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 md:px-8">
       <Link 
-        href={`/media/${params.id}/community`}
+        href={`/media/${params.slug}/community`}
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
       >
         <ChevronLeft className="size-4" />

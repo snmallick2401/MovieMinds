@@ -1,25 +1,33 @@
 import { prisma } from "@/lib/prisma";
+import { unstable_cache } from "next/cache";
 import { ActivityCard } from "./activity-card";
 
+const getCachedTrendingActivities = unstable_cache(
+  async () => {
+    return prisma.activity
+      .findMany({
+        where: {
+          type: { in: ["REVIEWED", "RATED", "COMPLETED", "FOLLOWED"] },
+          user: { showActivity: true },
+        },
+        include: {
+          user: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
+          targetUser: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
+          media: { select: { id: true, title: true, posterUrl: true, mediaType: true } },
+          review: { select: { id: true, body: true, spoiler: true } },
+          rating: { select: { id: true, rating: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 20,
+      })
+      .catch(() => []);
+  },
+  ["trending-activities"],
+  { revalidate: 300, tags: ["activity", "trending"] }
+);
+
 export async function TrendingFeed() {
-  const activities = await prisma.activity
-    .findMany({
-      where: {
-        type: { in: ["REVIEWED", "RATED", "COMPLETED", "FOLLOWED"] },
-        // Ideally filter out private profiles or activities, but for now we get recent public ones
-        user: { showActivity: true },
-      },
-      include: {
-        user: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
-        targetUser: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
-        media: { select: { id: true, title: true, posterUrl: true, mediaType: true } },
-        review: { select: { id: true, body: true, spoiler: true } },
-        rating: { select: { id: true, rating: true } },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-    })
-    .catch(() => []);
+  const activities = await getCachedTrendingActivities();
 
   if (activities.length === 0) {
     return (

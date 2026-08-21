@@ -4,6 +4,7 @@ import { fetchAniListCollection, fetchAniListDetails } from "@/lib/anilist/clien
 import { prisma } from "@/lib/prisma";
 import { fetchTmdbCollection, fetchTmdbDetails } from "@/lib/tmdb/client";
 import type { NormalizedMedia } from "@/types/media";
+import { generateSlugCandidates } from "@/lib/utils/slug";
 
 type SyncSource = "all" | "tmdb" | "anilist";
 
@@ -37,6 +38,27 @@ function mediaData(media: NormalizedMedia): Prisma.MediaUncheckedCreateInput {
     sourceUpdatedAt: media.sourceUpdatedAt,
     lastSyncedAt: new Date(),
   };
+}
+
+/** Resolve a unique slug for a media item by trying candidates in order. */
+async function resolveUniqueSlug(
+  title: string,
+  year: number | null,
+  sourceId: string,
+  existingId?: string,
+): Promise<string> {
+  const candidates = generateSlugCandidates(title, year, sourceId);
+  for (const candidate of candidates) {
+    const collision = await prisma.media.findUnique({
+      where: { slug: candidate },
+      select: { id: true },
+    });
+    if (!collision || (existingId && collision.id === existingId)) {
+      return candidate;
+    }
+  }
+  // Absolute fallback: sourceId-based slug (always unique)
+  return generateSlugCandidates("x", null, sourceId)[2];
 }
 
 async function ensureGenres(genreNames: string[]) {
@@ -160,12 +182,25 @@ export async function upsertMedia(
   personMap?: Map<number, string>,
 ) {
   const data = mediaData(media);
+  
+  // Generate a unique slug for this media item if it doesn't have one yet
+  const existing = await prisma.media.findUnique({
+    where: { source_sourceId: { source: media.source as MediaSource, sourceId: media.sourceId } },
+    select: { id: true, slug: true },
+  });
+  const slug = existing?.slug ?? await resolveUniqueSlug(
+    media.title,
+    media.year ?? null,
+    media.sourceId,
+    existing?.id,
+  );
+
   const record = await prisma.media.upsert({
     where: {
       source_sourceId: { source: media.source as MediaSource, sourceId: media.sourceId },
     },
-    create: data,
-    update: data,
+    create: { ...data, slug },
+    update: { ...data, slug: existing?.slug ?? slug },
   });
 
   const genreNames = Array.from(new Set(media.genres.filter(Boolean)));

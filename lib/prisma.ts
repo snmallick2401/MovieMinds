@@ -18,7 +18,7 @@ if (!globalForPrisma.prisma) {
   // @ts-expect-error - Prisma dynamically attaches these event emitters
   prisma.$on("query", (e: unknown) => {
     const event = e as { query: string; duration: number };
-    if (event.duration > 500) {
+    if (event.duration > 1000) {
       logger.warn({ msg: "Slow Prisma Query", query: event.query, duration: event.duration });
     } else {
       logger.debug({ msg: "Prisma Query", query: event.query, duration: event.duration });

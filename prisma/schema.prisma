@@ -96,6 +96,7 @@ model Media {
   id                     String             @id @default(cuid())
   source                 MediaSource
   sourceId               String
+  slug                   String?            @unique
   title                  String
   originalTitle          String?
   alternativeTitles      String[]           @default([])
@@ -137,6 +138,7 @@ model Media {
   discussionThreads      DiscussionThread[]
 
   @@unique([source, sourceId])
+  @@index([slug])
   @@index([mediaType, popularity])
   @@index([weightedRating, ratingCount])
   @@index([status, releaseDate])
@@ -144,6 +146,7 @@ model Media {
   @@index([language])
   @@index([country])
   @@index([createdAt(sort: Desc)])
+  @@index([popularity(sort: Desc), voteCount(sort: Desc)])
   @@map("media")
 }
 

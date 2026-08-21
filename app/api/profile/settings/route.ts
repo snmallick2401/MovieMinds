@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { requireUser } from "@/lib/auth/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
@@ -39,6 +40,7 @@ export async function PUT(request: Request) {
       data: parsed.data,
     });
     
+    revalidateTag("user-profile");
     return NextResponse.json({ profile: updated });
   } catch (error: unknown) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {

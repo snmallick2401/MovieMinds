@@ -3,7 +3,7 @@ import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 
-const getCachedUser = unstable_cache(
+export const getCachedUser = unstable_cache(
   async (id: string) => {
     const user = await prisma.user.findUnique({ where: { id } });
     if (!user) throw new Error("USER_NOT_FOUND");

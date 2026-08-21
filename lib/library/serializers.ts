@@ -69,6 +69,7 @@ export function serializeLibraryEntry(entry: StoredLibraryEntry): LibraryEntry {
     rating: entry.personalRating ?? null,
     media: {
       id: media.id,
+      slug: media.slug ?? null,
       source: media.source,
       sourceId: media.sourceId,
       title: media.title,
@@ -103,6 +104,7 @@ export function serializeWishlistEntry(entry: StoredWishlistEntry): WishlistEntr
     createdAt: entry.createdAt.toISOString(),
     media: {
       id: media.id,
+      slug: media.slug ?? null,
       source: media.source,
       sourceId: media.sourceId,
       title: media.title,

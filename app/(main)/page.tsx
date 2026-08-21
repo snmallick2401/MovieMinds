@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { ContinueWatchingRow } from "@/components/home/continue-watching-row";
 import { HomeHero } from "@/components/home/home-hero";
 import { RecentActivityRow } from "@/components/home/recent-activity-row";
@@ -7,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { getExploreSections, getPersonalizedRecommendations } from "@/lib/media/queries";
 import { getLibraryDashboard, getUserStats } from "@/lib/library/queries";
+import { getOrCreateProfile } from "@/lib/profile";
 
 export default async function HomePage() {
   const t0 = performance.now();
@@ -30,7 +32,11 @@ export default async function HomePage() {
 
   const [dbUser, stats, exploreSections, dashboard, personalizedRecommendations] = await Promise.all([
     userId
-      ? prisma.user.findUnique({ where: { id: userId }, select: { displayName: true } }).catch(() => null)
+      ? getOrCreateProfile({
+          id: userId,
+          email: userEmail,
+          user_metadata: { display_name: userMetadataName },
+        }).catch(() => null)
       : Promise.resolve(null),
     userId
       ? getUserStats(userId)
@@ -95,6 +101,34 @@ export default async function HomePage() {
 
       {/* Recent Activity Section */}
       <RecentActivityRow fallbackMedia={exploreSections.popularMovies} />
+
+      {/* Latest News Section */}
+      <Suspense fallback={<div className="h-48 animate-pulse rounded-xl bg-muted" />}>
+        <HomeNewsSection />
+      </Suspense>
     </div>
+  );
+}
+
+import { getLatestNews } from "@/lib/news/queries";
+import { NewsCarousel } from "@/components/news/news-carousel";
+import Link from "next/link";
+import { ChevronRight } from "lucide-react";
+
+async function HomeNewsSection() {
+  const articles = await getLatestNews(12);
+  
+  if (!articles.length) return null;
+
+  return (
+    <section>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-xl font-bold">Latest Anime News</h2>
+        <Link href="/news" className="flex items-center text-sm font-semibold text-primary hover:underline">
+          View All <ChevronRight className="ml-1 h-4 w-4" />
+        </Link>
+      </div>
+      <NewsCarousel articles={articles} />
+    </section>
   );
 }

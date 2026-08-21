@@ -15,7 +15,7 @@ export function MediaCard({
 }) {
   return (
     <Link
-      href={`/media/${media.id}`}
+      href={`/media/${media.slug ?? media.id}`}
       className="group block overflow-hidden rounded-xl border border-border bg-card shadow-sm transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       aria-label={`Open ${media.title}`}
     >
