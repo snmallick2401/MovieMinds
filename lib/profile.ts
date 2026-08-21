@@ -1,6 +1,17 @@
 import { Prisma } from "@prisma/client";
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
+
+const getCachedUser = unstable_cache(
+  async (id: string) => {
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) throw new Error("USER_NOT_FOUND");
+    return user;
+  },
+  ["user-profile-cache"],
+  { tags: ["user-profile"], revalidate: 3600 * 24 }
+);
 
 function buildFallbackUsername(email: string, id: string) {
   const localPart = email.split("@")[0]?.toLowerCase().replace(/[^a-z0-9_]/g, "_");
@@ -25,18 +36,24 @@ export const getOrCreateProfile = cache(async (user: {
       : buildFallbackUsername(email, user.id);
 
   try {
-    const existing = await prisma.user.findUnique({ where: { id: user.id } });
-    if (existing) return existing;
+    const existing = await getCachedUser(user.id);
+    return existing;
+  } catch (err: any) {
+    if (err.message === "USER_NOT_FOUND") {
+      try {
+        return await prisma.user.create({
+          data: {
+            id: user.id,
+            email,
+            username,
+            displayName,
+          },
+        });
+      } catch (createErr) {
+        // Fallback below
+      }
+    }
 
-    return await prisma.user.create({
-      data: {
-        id: user.id,
-        email,
-        username,
-        displayName,
-      },
-    });
-  } catch {
     return {
       id: user.id,
       email,
