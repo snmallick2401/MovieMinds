@@ -239,7 +239,7 @@ async function testRecommendations(users: any[]) {
       recs.forEach((r, idx) => {
         console.log(`  ${idx + 1}. [${r.matchPercentage}%] ${r.title} - Reason: ${r.recommendationReason}`);
       });
-      if (recs[0].matchPercentage === 96 && recs[0].recommendationReason.includes('Trending')) {
+      if (recs[0]?.matchPercentage === 96 && recs[0]?.recommendationReason?.includes('Trending')) {
          console.warn(`  ⚠️ Hit the fallback mechanism instead of ML!`);
       } else {
          console.log(`  ✅ ML Engine processed taste vectors successfully.`);

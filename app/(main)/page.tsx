@@ -9,6 +9,7 @@ import { getExploreSections, getPersonalizedRecommendations } from "@/lib/media/
 import { getLibraryDashboard, getUserStats } from "@/lib/library/queries";
 
 export default async function HomePage() {
+  const t0 = performance.now();
   let userId: string | null = null;
   let userEmail: string | null = null;
   let userMetadataName: string | null = null;
@@ -25,18 +26,14 @@ export default async function HomePage() {
     // Guest fallback
   }
 
+  const tAuth = performance.now();
+
   const [dbUser, stats, exploreSections, dashboard, personalizedRecommendations] = await Promise.all([
     userId
-      ? prisma.user.findUnique({ where: { id: userId } }).catch(() => null)
+      ? prisma.user.findUnique({ where: { id: userId }, select: { displayName: true } }).catch(() => null)
       : Promise.resolve(null),
     userId
-      ? getUserStats(userId).catch(() => ({
-          totalWatched: 1,
-          hoursWatched: 0,
-          averageRating: 10.0,
-          completionRate: 100,
-          favoriteGenres: [{ name: "Drama", count: 1 }],
-        }))
+      ? getUserStats(userId)
       : Promise.resolve({
           totalWatched: 1,
           hoursWatched: 0,
@@ -46,10 +43,20 @@ export default async function HomePage() {
         }),
     getExploreSections(),
     userId
-      ? getLibraryDashboard(userId).catch(() => ({ items: [], wishlist: [] }))
+      ? getLibraryDashboard(userId)
       : Promise.resolve({ items: [], wishlist: [] }),
-    getPersonalizedRecommendations(userId, 6).catch(() => []),
+    getPersonalizedRecommendations(userId, 6),
   ]);
+
+  const tDataLoaded = performance.now();
+
+  console.log(JSON.stringify({
+    level: "info",
+    tag: "TIMING_HOMEPAGE",
+    authMs: Math.round(tAuth - t0),
+    dataMs: Math.round(tDataLoaded - tAuth),
+    totalPageMs: Math.round(tDataLoaded - t0),
+  }));
 
   const userName =
     dbUser?.displayName ||

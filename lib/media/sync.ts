@@ -54,17 +54,16 @@ async function ensureGenres(genreNames: string[]) {
 
   const missingNames = uniqueNames.filter((name) => !genreMap.has(name));
 
-  for (const name of missingNames) {
-    try {
-      const g = await prisma.genre.upsert({
-        where: { name },
-        create: { name },
-        update: {},
-      });
+  if (missingNames.length > 0) {
+    await prisma.genre.createMany({ 
+      data: missingNames.map(name => ({ name })), 
+      skipDuplicates: true 
+    });
+    const newlyCreated = await prisma.genre.findMany({
+      where: { name: { in: missingNames } },
+    });
+    for (const g of newlyCreated) {
       genreMap.set(g.name, g.id);
-    } catch {
-      const g = await prisma.genre.findUnique({ where: { name } });
-      if (g) genreMap.set(g.name, g.id);
     }
   }
 
@@ -93,19 +92,20 @@ async function ensurePlatforms(
     platformMap.set(p.name, p.id);
   }
 
+  const missingPlatforms = [];
   for (const [name, logoUrl] of uniquePlatforms.entries()) {
     if (!platformMap.has(name)) {
-      try {
-        const stored = await prisma.streamingPlatform.upsert({
-          where: { name },
-          create: { name, logoUrl },
-          update: logoUrl ? { logoUrl } : {},
-        });
-        platformMap.set(stored.name, stored.id);
-      } catch {
-        const stored = await prisma.streamingPlatform.findUnique({ where: { name } });
-        if (stored) platformMap.set(stored.name, stored.id);
-      }
+      missingPlatforms.push({ name, logoUrl: logoUrl ?? null });
+    }
+  }
+
+  if (missingPlatforms.length > 0) {
+    await prisma.streamingPlatform.createMany({ data: missingPlatforms, skipDuplicates: true });
+    const newlyCreated = await prisma.streamingPlatform.findMany({
+      where: { name: { in: missingPlatforms.map(p => p.name) } },
+    });
+    for (const p of newlyCreated) {
+      platformMap.set(p.name, p.id);
     }
   }
 
@@ -133,19 +133,20 @@ async function ensurePeople(credits: NonNullable<NormalizedMedia["credits"]>) {
     personMap.set(p.tmdbId, p.id);
   }
 
+  const missingPeople = [];
   for (const [tmdbId, person] of uniquePeople.entries()) {
     if (!personMap.has(tmdbId)) {
-      try {
-        const stored = await prisma.person.upsert({
-          where: { tmdbId },
-          create: { tmdbId, name: person.name, profileUrl: person.profileUrl },
-          update: person.profileUrl ? { profileUrl: person.profileUrl } : {},
-        });
-        personMap.set(stored.tmdbId, stored.id);
-      } catch {
-        const stored = await prisma.person.findUnique({ where: { tmdbId } });
-        if (stored) personMap.set(stored.tmdbId, stored.id);
-      }
+      missingPeople.push({ tmdbId, name: person.name, profileUrl: person.profileUrl });
+    }
+  }
+
+  if (missingPeople.length > 0) {
+    await prisma.person.createMany({ data: missingPeople, skipDuplicates: true });
+    const newlyCreated = await prisma.person.findMany({
+      where: { tmdbId: { in: missingPeople.map(m => m.tmdbId) } },
+    });
+    for (const p of newlyCreated) {
+      personMap.set(p.tmdbId, p.id);
     }
   }
 

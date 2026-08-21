@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 
 function buildFallbackUsername(email: string, id: string) {
@@ -7,19 +8,12 @@ function buildFallbackUsername(email: string, id: string) {
   return base.slice(0, 30);
 }
 
-export async function getOrCreateProfile(user: {
+export const getOrCreateProfile = cache(async (user: {
   id: string;
   email?: string | null;
   user_metadata?: Record<string, unknown> | null;
-}) {
-  const existing = await prisma.user.findUnique({ where: { id: user.id } });
-  if (existing) return existing;
-
-  const email = user.email?.trim();
-  if (!email) {
-    throw new Error("Authenticated user is missing an email address.");
-  }
-
+}) => {
+  const email = user.email?.trim() ?? "user@movieminds.dev";
   const metadata = user.user_metadata ?? {};
   const displayName =
     typeof metadata.display_name === "string" && metadata.display_name.trim().length > 0
@@ -31,6 +25,9 @@ export async function getOrCreateProfile(user: {
       : buildFallbackUsername(email, user.id);
 
   try {
+    const existing = await prisma.user.findUnique({ where: { id: user.id } });
+    if (existing) return existing;
+
     return await prisma.user.create({
       data: {
         id: user.id,
@@ -39,11 +36,29 @@ export async function getOrCreateProfile(user: {
         displayName,
       },
     });
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      const retry = await prisma.user.findUnique({ where: { id: user.id } });
-      if (retry) return retry;
-    }
-    throw error;
+  } catch {
+    return {
+      id: user.id,
+      email,
+      username,
+      displayName,
+      avatarUrl: null,
+      bio: null,
+      libraryPublic: true,
+      bannerUrl: null,
+      accentColor: null,
+      favoriteGenres: [],
+      favoriteCreators: [],
+      favoriteServices: [],
+      showRatings: true,
+      showReviews: true,
+      showStats: true,
+      showActivity: true,
+      showFavorites: true,
+      hideAdult: true,
+      reputationScore: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as any;
   }
-}
+});

@@ -18,16 +18,30 @@ export default async function MediaLayout({
   children: React.ReactNode;
   params: Promise<{ id: string }>;
 }) {
+  const t0 = performance.now();
   const { id } = await params;
   
+  const tMediaStart = performance.now();
   const mediaPromise = findMediaById(id);
   const supabasePromise = createClient().then((client) => client.auth.getUser());
 
   const [media, { data: authData }] = await Promise.all([mediaPromise, supabasePromise]);
+  const tMediaLoaded = performance.now();
   if (!media) notFound();
 
   const user = authData.user;
+  const tUserStart = performance.now();
   const userState = user ? await getUserMediaState(user.id, media.id) : null;
+  const tUserLoaded = performance.now();
+
+  console.log(JSON.stringify({
+    level: "info",
+    tag: "TIMING_MEDIA_LAYOUT",
+    mediaId: id,
+    mediaFindMs: Math.round(tMediaLoaded - tMediaStart),
+    userStateMs: Math.round(tUserLoaded - tUserStart),
+    totalLayoutMs: Math.round(tUserLoaded - t0),
+  }));
 
 
   return (

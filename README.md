@@ -2,181 +2,49 @@
 
 MovieMinds is a unified media recommendation and community platform for movies, anime, television, documentaries, and other visual media. It establishes a complete account system, responsive application shell, and dark-first design system.
 
-## v0.1.0 – Authentication System
+## Project Documentation
 
-- Supabase email/password authentication and Google OAuth
-- Protected App Router routes with persistent, refreshed sessions
-- Automatic `profiles` record creation with a Supabase database trigger
-- Editable user profile with username uniqueness checks
-- Responsive sidebar/mobile navigation and persistent dark mode
-- Prisma/PostgreSQL foundation ready for catalog, lists, reviews, and recommendations
+This repository contains comprehensive documentation guiding the development, architecture, and design of MovieMinds. Please refer to the following documents for detailed information:
 
-## Stack
+- [**Product Requirements Document (PRD)**](./PRD.md): Outlines the features, functional requirements, and target audience.
+- [**Architecture**](./Architecture.md): Details the technical stack, database schema, data flow, and infrastructure (Next.js, Prisma, PostgreSQL, Supabase, Python AI Engine).
+- [**Development Rules**](./rules.md): Coding standards, best practices, and conventions for contributing to the codebase.
+- [**Project Phases**](./phases.md): The roadmap breaking down development milestones from v0.1.0 through advanced future features.
+- [**Design System**](./design.md): Color themes, typography, and component guidelines ensuring a consistent dark-first UI.
 
-Next.js 15 App Router · TypeScript (strict) · Tailwind CSS · reusable shadcn-style UI primitives · Supabase Auth · PostgreSQL · Prisma · React Hook Form + Zod · Lucide icons.
+## v0.6.0 - Performance Hardening & Scale Readiness
+
+MovieMinds `0.6.0` marks the completion of Phase 7 optimizations, achieving massive performance improvements:
+- Deep Next.js caching optimization with statically declared `unstable_cache`.
+- PostgreSQL query reduction using `relationLoadStrategy: "join"` and parameterized `$queryRaw` batching.
+- Resilience hardening against Supabase pooler timeouts using Try/Catch boundaries and in-memory fallbacks.
+- Non-blocking provider metadata hydration via React `after()` hooks.
+- Complete system documentation mapping for scaling and team expansion.
 
 ## Local setup
 
-1. Copy `.env.example` to `.env.local` and fill in your Supabase URL, anon key, and PostgreSQL connection string.
+1. Copy `.env.example` to `.env.local` and fill in your Supabase URL, anon key, and PostgreSQL connection string. (Also verify `DATABASE_URL` uses the pooler endpoint and includes `&connect_timeout=20`).
 2. In Supabase Dashboard, enable **Email** and **Google** providers under Authentication. Add `http://localhost:3000/auth/callback` to Authentication → URL Configuration → Redirect URLs.
 3. Open Supabase SQL Editor and run [`supabase/migrations/0001_create_profiles.sql`](./supabase/migrations/0001_create_profiles.sql). This is essential: it keeps auth identities and public profiles synchronized.
-4. Install and generate Prisma:
+4. Install dependencies and prepare the Prisma client:
 
 ```bash
 npm install
 npm run prisma:generate
+npm run prisma:push
 ```
 
-5. Start the application:
+5. Start the Next.js application:
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Sign up using email/password or Google; protected routes will redirect unauthenticated users to `/login`.
-
-### Add a development test account
-
-After replacing the placeholder Supabase values and running the profile migration, open Supabase Dashboard → Authentication → Users → **Add user**. Use `user@gmail.com` and `User@2401`, then mark the email as confirmed for local testing. The database trigger creates the matching profile automatically. Do not commit these credentials or add them to source code; rotate them before sharing the project.
-
-## Environment variables
-
-| Variable                        | Purpose                              |
-| ------------------------------- | ------------------------------------ |
-| `NEXT_PUBLIC_SUPABASE_URL`      | Supabase project URL                 |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase browser/server anon key     |
-| `DATABASE_URL`                  | PostgreSQL connection used by Prisma |
-
-For Supabase, use its connection pooler string in development and serverless deployments. Never commit `.env.local`.
-
-## Useful commands
-
-```bash
-npm run dev             # development server
-npm run typecheck       # strict TypeScript check
-npm run lint            # ESLint
-npm run format:check    # Prettier verification
-npm run prisma:generate # generate Prisma Client
-npm run prisma:push     # sync schema during local prototyping
-```
-
-## Architecture notes
-
-`auth.users` remains the authority for credentials and sessions; `public.profiles` contains application-facing user data. The Supabase trigger creates the profile on every registration, and Prisma maps the `User` model to `profiles`. This keeps future application models simple: they can use `User.id` as a direct foreign key to the Supabase Auth UUID.
-
-The `(main)` route group owns the authenticated shell, leaving future modules isolated by domain. Supabase clients are separated by browser/server context, while the middleware refreshes sessions and enforces protected routes before rendering.
-
-## v0.2.0 - Media Catalog and Discovery
-
-MovieMinds uses a local-first, unified catalog. TMDb is used for films and television; AniList supplies anime series, anime films, OVAs, and specials. Provider records are normalized before storage so UI code, search, filtering, and future recommendation features work with one `Media` shape rather than provider-specific responses.
-
-### Provider setup
-
-1. Create a free account at [TMDb](https://www.themoviedb.org/settings/api) and add its API key as `TMDB_API_KEY`.
-2. AniList does not require a key for the public GraphQL reads used by this project. Keep `ANILIST_API_URL=https://graphql.anilist.co` unless you deliberately use a proxy.
-3. Set a random `CATALOG_SYNC_SECRET`. It protects the server-only synchronization route.
-4. Apply the updated Prisma schema after running the initial Supabase SQL migration:
-
-```bash
-npm run prisma:generate
-npm run prisma:push
-```
-
-For a migration-managed workflow, use `npm run prisma:migrate` instead of `prisma:push`.
-
-### Sync strategy
-
-MovieMinds never calls provider APIs while rendering a normal catalog page. The PostgreSQL `media` table is the source of truth. A protected sync endpoint imports a requested provider collection, upserts every title by its provider identity (`source + sourceId`), refreshes its genres and streaming availability, then invalidates the catalog cache.
-
-```bash
-curl -X POST http://localhost:3000/api/catalog/sync \
-  -H "Authorization: Bearer $CATALOG_SYNC_SECRET" \
-  -H "Content-Type: application/json" \
-  -d '{"collection":"trending","page":1}'
-```
-
-Allowed collections are `trending`, `popular`, `top_rated`, and `upcoming`. Schedule this endpoint with a cron service or platform scheduler; it is intentionally separate from page rendering so provider quotas and visitor traffic cannot affect each other.
-
-### Catalog architecture
-
-`Media`, `Genre`, `MediaGenre`, `StreamingPlatform`, and `MediaPlatform` represent the catalog. `CatalogSync` stores sync checkpoints. `Media` indexes support common discovery paths (type/popularity, status/release date, year, language, and country), while the composite provider key prevents duplicate imports. The schema also retains provider data, alternate titles, and platform relations needed by future libraries and recommendation features.
-
-### Search and filtering
-
-The header and Explore search box offer debounced suggestions from `/api/search`; recent searches are stored locally in the browser. Explore uses URL search parameters for all filter state, so results are linkable and recover on refresh. `/api/media`, `/api/media/[id]`, `/api/genres`, and `/api/discover` provide typed local-catalog responses for future clients.
-
-The current similarity strategy prioritizes shared genres, then media type and language, ordered by popularity and rating. It is deliberately isolated in `lib/media/queries.ts` so a future recommendation engine can replace it without changing media pages.
-
-## v0.3.0 - Personal Library
-
-Adds a user-owned tracking layer over the shared catalog. Every library entry has exactly one state (`Watching`, `Completed`, `Plan to watch`, `On hold`, or `Dropped`), episode progress, completion dates, rewatch count, and favorite status. Ratings use half-point values from 0.5 to 10; reviews support spoiler and public/private visibility; wishlists preserve priority and order.
-
-Run the Prisma update before using library routes:
-
-```bash
-npm run prisma:generate
-npm run prisma:push
-```
-
-The authenticated API surface is `/api/library`, `/api/wishlist`, `/api/ratings`, and `/api/reviews`, including ownership-checked item routes. Media detail pages use these endpoints directly. `/library` is the personal dashboard, `/stats` uses Recharts for viewing trends, and `/user/[username]` exposes only public-library data and public reviews. Toggle public visibility in Profile settings.
-
-## v0.4.1 - Reviews
-
-Reviews are now a dedicated, server-rendered media feature. Each user can keep one review per title, with optional headline, spoiler protection, visibility, edit timestamps, and their personal rating. The media page fetches reviews in pages of 20 and always highlights the current user’s review.
-
-`POST /api/reviews`, `PUT /api/reviews/[id]`, and `DELETE /api/reviews/[id]` require an authenticated owner. `GET /api/media/[id]/reviews?page=1` is available to visitors and returns public reviews plus the signed-in user’s private review when applicable. The review editor saves unfinished drafts locally in the browser; spoiler text remains hidden until the reader chooses to reveal it.
-
-## v0.5.1 - Social Graph & Activity Feed
-
-Turns MovieMinds into a connected social platform (a Letterboxd + Goodreads + Instagram experience for film and anime fans). Users can follow each other, discover members with similar taste, view personalized activity timelines, and receive grouped notifications.
-
-### Key Social Features
-
-- **Follow System**: Direct user-to-user follow graph with transactional APIs and real-time count updates on profile headers (`/user/[username]`).
-- **Taste Match Engine**: A 12-hour cached compatibility engine (`lib/social/taste-match.ts`) computing 0–100% compatibility scores, shared favorite titles, and common genres.
-- **Social Discovery (`/people`)**: Recommends members based on taste match, review volume, and recency, complete with interactive profile cards and activity stats.
-- **Personalized Activity Feed (`/feed`)**: Timeline aggregating ratings, reviews, library completions, and follow events from accounts you follow. Falls back seamlessly to community trends for new or inactive users.
-- **Notifications & Smart Grouping**: Notification center (`/notifications`) with real-time grouping for multiple follow or interaction events (*"Jane Doe and 2 others started following you"*).
-- **Database Performance & Indexing**: Optimized schema indexes across `Activity`, `Follow`, and `Notification` tables for fast sorting and aggregation as the user base grows.
-
-## v0.5.2 - Community Discussions & Threaded Conversations
-
-Transforms MovieMinds from a review platform into a rich community discussion ecosystem. Every movie, TV series, anime, actor, and creator features active, dedicated discussion threads alongside general film/anime category forums.
-
-### Key Forum & Discussion Features
-
-- **Discussion Threads & Routing**: Dedicated thread ecosystems (`/media/[id]/community/[threadId]`) with category filters (`GENERAL`, `SPOILERS`, `THEORIES`, `RECOMMENDATIONS`, `NEWS`, `FAN_ART`).
-- **Rich Forum Syntax & Formatting**: Lightweight Markdown + custom forum extensions including BBCode-style spoilers (`[spoiler]text[/spoiler]`), quotes (`> quote`), user mentions (`@username`), and auto-embeds.
-- **Reactions & Reputation System**: Real-time reaction counters (Like, Heart, Flame, Mindblown, Sad, Laugh) on posts and threads, directly influencing user reputation scores (`reputationScore`).
-- **Resilient Media & Provider Sync**: Fail-fast background hydration for TMDb and AniList platforms, cast, and crew with default fallback UI grids and fast timeouts to protect against ISP-blocked network environments.
-
-## v0.5.5 - UI Refinement & Community Expansion
-
-Focuses on deep UI/UX polishing, immersive theming, and rich community interactions.
-
-### Key Enhancements
-
-- **Immersive Micro-Interactions**: Custom CSS-driven animated components replacing generic libraries. Features include a fully animated "Zoro Santoryu" (Three-Sword Style) hamburger navigation drawer with haki glow effects, and a custom BB-8 light/dark mode switch.
-- **Rich Post Formatting**: Advanced BBCode parsing supporting custom image embeds (`[img]`), rich text (`[b]`, `[i]`), quotes (`[quote]`), and external link auto-formatting.
-- **Community Engagement**: Animated heart-shaped "Like" buttons on forum posts, custom user titles and badges (e.g., dynamic "Elite Critic" badges for high-reputation users), and integrated report/quote actions.
-- **Robust Layout Architecture**: Improved z-index stacking context handling, React Portal utilization for overlays and drawers, escaping backdrop-blur CSS filter constraints.
-- **Responsive Design**: Redesigned native-app style bottom navigation bar for mobile with a strict 5-item layout, complemented by an edge-to-edge slide-out drawer for deep navigation.
-- **Theme Synergies**: Comprehensive replacement of hardcoded color tokens with semantic Tailwind CSS variables (`bg-card`, `bg-muted`, etc.) ensuring seamless light/dark mode transitions across all community forums and threads.
-
-## v0.5.6 - Python AI Recommendation Microservice (FastAPI + ML)
-
-MovieMinds features an advanced Python **FastAPI + Machine Learning** microservice running alongside the Next.js App Router for personalized recommendations, semantic similarity, and taste matching.
-
-### Key Machine Learning Capabilities
-
-- **Hybrid Recommendation Engine**: Blends TF-IDF content-based vector embeddings (genres, titles, plot descriptions, keywords) with user collaborative signals (explicit ratings, watch statuses, and favorites).
-- **Calibrated Match Percentage (0–100%)**: Dynamically scores candidate media against the user's preference vectors, showing realistic match indicators (e.g., `94% Match`).
-- **Contextual Recommendation Reasons**: Generates natural language explanations for every recommendation (*"Matches your favorite genre: Psychological Thriller"*, *"Because you loved Attack on Titan"*).
-- **Item-to-Item Semantic Similarity**: Replaces simple genre queries with multi-dimensional cosine similarity across media overviews, genres, and metadata.
-- **Deep ML Taste Match Engine**: Computes high-dimensional compatibility scores between users for social discovery.
-- **Resilient Fallback Design**: Next.js connects to the AI engine with rapid timeouts (<500ms) and automatic fallback to PostgreSQL heuristics if the Python microservice is offline.
+Open [http://localhost:3000](http://localhost:3000) (or `http://localhost:3001` if 3000 is occupied). Sign up using email/password or Google; protected routes will redirect unauthenticated users to `/login`.
 
 ### Running the Python AI Engine
+
+MovieMinds features an advanced Python **FastAPI + Machine Learning** microservice running alongside the Next.js App Router for personalized recommendations, semantic similarity, and taste matching.
 
 1. Navigate to the `ai-engine` folder and install dependencies:
 ```bash
@@ -193,8 +61,19 @@ pip install -r requirements.txt
 python -m uvicorn main:app --reload --host 127.0.0.1 --port 8001
 ```
 
-3. The microservice will be live at `http://127.0.0.1:8001` with interactive Swagger docs at `http://127.0.0.1:8001/docs`.
+The microservice will be live at `http://127.0.0.1:8001` with interactive Swagger docs at `http://127.0.0.1:8001/docs`.
+
+## Useful commands
+
+```bash
+npm run dev             # development server
+npm run typecheck       # strict TypeScript check
+npm run lint            # ESLint
+npm run format:check    # Prettier verification
+npm run prisma:generate # generate Prisma Client
+npm run prisma:push     # sync schema during local prototyping
+```
 
 ## Deployment
 
-Deploy the repository to Vercel, configure the three environment variables in Vercel project settings, and add your production `https://your-domain/auth/callback` redirect URL in Supabase. Run the profile SQL migration once in the production Supabase project.
+Deploy the repository to Vercel, configure the three environment variables in Vercel project settings, and add your production `https://your-domain/auth/callback` redirect URL in Supabase. Run the profile SQL migration once in the production Supabase project. Ensure your production `DATABASE_URL` utilizes the Supabase connection pooler strings.

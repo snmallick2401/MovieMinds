@@ -9,6 +9,7 @@ import { MediaGrid, MediaGridSkeleton } from "@/components/media/media-grid";
 import { MediaRow } from "@/components/media/media-row";
 import { parseMediaFilters } from "@/lib/media/filters";
 import { findMedia, getExploreSections, getGenres } from "@/lib/media/queries";
+import type { MediaSummary } from "@/types/media";
 
 type PageProps = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
@@ -23,8 +24,9 @@ function asSearchParams(input: Record<string, string | string[] | undefined>) {
 
 async function CatalogResults({ params }: { params: URLSearchParams }) {
   const filters = parseMediaFilters(params);
+  const isDefaultView = !filters.query && !filters.page;
   const [{ items, total, page, totalPages }, genres] = await Promise.all([
-    findMedia(filters),
+    findMedia(filters, { skipCount: isDefaultView }),
     getGenres(),
   ]);
   const hasFilters = Array.from(params.keys()).some(
@@ -66,8 +68,7 @@ async function CatalogResults({ params }: { params: URLSearchParams }) {
   );
 }
 
-async function DiscoveryRows() {
-  const sections = await getExploreSections();
+function DiscoveryRows({ sections }: { sections: { trending: MediaSummary[]; popularMovies: MediaSummary[]; popularAnime: MediaSummary[]; topRated: MediaSummary[]; newReleases: MediaSummary[]; upcoming: MediaSummary[] } }) {
   return (
     <div className="mt-14 space-y-12">
       <MediaRow
@@ -112,6 +113,7 @@ async function DiscoveryRows() {
 export default async function ExplorePage({ searchParams }: PageProps) {
   const params = asSearchParams(await searchParams);
   const sections = await getExploreSections();
+  const hasParams = Array.from(params.keys()).length > 0;
 
   return (
     <div className="space-y-6">
@@ -133,11 +135,7 @@ export default async function ExplorePage({ searchParams }: PageProps) {
       </Suspense>
 
       {/* Discovery Rows for Default Catalog */}
-      {!Array.from(params.keys()).length && (
-        <Suspense fallback={null}>
-          <DiscoveryRows />
-        </Suspense>
-      )}
+      {!hasParams && <DiscoveryRows sections={sections} />}
     </div>
   );
 }

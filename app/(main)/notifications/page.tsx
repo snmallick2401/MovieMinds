@@ -19,14 +19,16 @@ export default async function NotificationsPage() {
     );
   }
 
-  const notifications = await prisma.notification.findMany({
-    where: { userId: user.id },
-    include: {
-      actor: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 40,
-  });
+  const notifications = await prisma.notification
+    .findMany({
+      where: { userId: user.id },
+      include: {
+        actor: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 40,
+    })
+    .catch(() => []);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">

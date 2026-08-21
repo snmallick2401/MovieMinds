@@ -2,29 +2,33 @@ import requests
 from bs4 import BeautifulSoup
 from .db import get_db_connection
 from datetime import datetime
+import os
 
 # A robust scraper for updating media release schedules
 # For demonstration, we target a generic anime schedule page or an open API if available.
 
-def scrape_schedules():
-    print("[Schedule Spider] Starting schedule sync...")
-    # Example logic: we'd fetch the HTML, parse out titles and their next airing dates
-    # Since LiveChart/MAL HTML changes frequently, this is a simplified structure
-    
+from .logger import get_logger
+
+def fetch_schedules():
     # In a real-world scenario, you would use:
     # response = requests.get('https://www.livechart.me/schedule', headers={'User-Agent': 'Mozilla/5.0'})
     # soup = BeautifulSoup(response.content, 'html.parser')
+    return []
+
+def scrape_schedules(schedule_updates=None, run_id: str = None):
+    logger = get_logger("schedule_spider", "scrape_schedules", run_id)
+    logger.info("Starting schedule sync")
     
-    # We will simulate fetching schedule updates that need to be pushed to Postgres
-    schedule_updates = [
-        # {"title": "One Piece", "status": "AIRING", "releaseDate": datetime.utcnow()}
-    ]
+    if schedule_updates is None:
+        schedule_updates = fetch_schedules()
     
     try:
         conn = get_db_connection()
         with conn.cursor() as cursor:
-            # Step 1: Find media in DB that matches the titles we scraped
-            # Step 2: Update their status and releaseDate
+            # We explicitly set it for the connection because PgBouncer might not persist the URL schema arg
+            if os.environ.get('TESTING') == '1':
+                cursor.execute("SET search_path TO test_schema;")
+                
             updates_applied = 0
             for update in schedule_updates:
                 cursor.execute(
@@ -37,9 +41,11 @@ def scrape_schedules():
                 )
                 updates_applied += cursor.rowcount
             
-            print(f"[Schedule Spider] Successfully applied {updates_applied} schedule updates.")
+            conn.commit()
+            logger.info(f"Successfully applied {updates_applied} schedule updates", extra={"updates_applied": updates_applied})
     except Exception as e:
-        print(f"[Schedule Spider] Error syncing schedules: {e}")
+        logger.error(f"Error syncing schedules: {e}", extra={"error_type": type(e).__name__})
+        raise
     finally:
         if 'conn' in locals() and conn:
             conn.close()

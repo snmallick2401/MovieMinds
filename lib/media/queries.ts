@@ -1,6 +1,8 @@
 import { Prisma } from "@prisma/client";
 import { unstable_cache } from "next/cache";
+import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 import {
   normalizedToDetail,
   normalizedToSummary,
@@ -20,6 +22,36 @@ import type {
 const summaryRelations = {
   genres: { include: { genre: true } },
 } satisfies Prisma.MediaInclude;
+
+const narrowCardSelect = {
+  id: true,
+  source: true,
+  sourceId: true,
+  title: true,
+  originalTitle: true,
+  posterUrl: true,
+  releaseDate: true,
+  year: true,
+  mediaType: true,
+  averageRating: true,
+  communityAverageRating: true,
+  ratingCount: true,
+  weightedRating: true,
+  popularityScore: true,
+  voteCount: true,
+  popularity: true,
+  description: true,
+  genres: {
+    select: {
+      genre: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+  },
+} as const;
 
 const detailRelations = {
   genres: { include: { genre: true } },
@@ -77,69 +109,78 @@ import {
   autoPersistSearchResults,
 } from "@/lib/media/expansion";
 
-export async function findMedia(filters: MediaFilters = {}): Promise<PaginatedMedia> {
+export async function findMedia(
+  filters: MediaFilters = {},
+  options?: { skipCount?: boolean }
+): Promise<PaginatedMedia> {
   const page = filters.page ?? 1;
   const pageSize = filters.pageSize ?? 24;
-  const where = whereFromFilters(filters);
-  const isLightSearch = !!filters.query && pageSize <= 10;
 
-  // 1. Fetch from database first
-  const [dbItems, total] = await Promise.all([
-    prisma.media.findMany({
-      where,
-      include: summaryRelations,
-      orderBy: orderFromFilters(filters),
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    }),
-    isLightSearch ? Promise.resolve(0) : prisma.media.count({ where }),
-  ]);
+  try {
+    const where = whereFromFilters(filters);
+    const isLightSearch = !!filters.query && pageSize <= 10;
+    const shouldSkipCount = options?.skipCount ?? (isLightSearch || (!filters.page && pageSize <= 12));
 
+    // 1. Fetch from database first
+    const [dbItems, total] = await Promise.all([
+      prisma.media.findMany({
+        where,
+        select: narrowCardSelect,
+        orderBy: orderFromFilters(filters),
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      shouldSkipCount ? Promise.resolve(0) : prisma.media.count({ where }),
+    ]);
 
-  const serializedDbItems = dbItems.map(serializeMediaSummary);
+    const serializedDbItems = dbItems.map((item: any) => serializeMediaSummary(item));
 
-  if (!filters.query) {
-    // Only auto-expand when explicitly browsing the catalog (pageSize > 8)
-    // This prevents Next.js from blocking the Home Page SSR on dangling background expansion promises.
-    if (total < 800 && pageSize > 8) {
-      autoExpandFilterCatalog(filters, total);
+    if (!filters.query) {
+      // Only auto-expand when explicitly browsing the catalog (pageSize > 8)
+      // This prevents Next.js from blocking the Home Page SSR on dangling background expansion promises.
+      if (total < 800 && pageSize > 8) {
+        autoExpandFilterCatalog(filters, total);
+      }
+      return {
+        items: serializedDbItems,
+        total,
+        page,
+        pageSize,
+        totalPages: Math.ceil(total / pageSize),
+      };
     }
+
+    // 2. Fetch from external sources only if DB returned few results
+    let externalItems: NormalizedMedia[] = [];
+    if (!isLightSearch || serializedDbItems.length < 5) {
+      const searchSignal = AbortSignal.timeout(150);
+      const [tmdbResults, anilistResults] = await Promise.all([
+        searchTmdb(filters.query, searchSignal).catch(() => []),
+        searchAniList(filters.query, searchSignal).catch(() => []),
+      ]);
+      externalItems = [...tmdbResults, ...anilistResults];
+      autoPersistSearchResults(externalItems).catch(() => {});
+    }
+
+    const existingTitles = new Set(serializedDbItems.map((item) => item.title.toLowerCase()));
+    const externalSummaries = externalItems
+      .filter((m) => !existingTitles.has(m.title.toLowerCase()))
+      .map(normalizedToSummary);
+
+    const combinedItems = [...serializedDbItems, ...externalSummaries];
+    const combinedTotal = (isLightSearch ? serializedDbItems.length : total) + externalSummaries.length;
+
     return {
-      items: serializedDbItems,
-      total,
+      items: combinedItems.slice(0, pageSize),
+      total: combinedTotal,
       page,
       pageSize,
-      totalPages: Math.ceil(total / pageSize),
+      totalPages: Math.ceil(combinedTotal / pageSize),
     };
+  } catch (error) {
+    logger.error({ msg: "findMedia failed — returning empty results", error });
+    return { items: [], total: 0, page, pageSize, totalPages: 0 };
   }
-
-  // 2. Fetch from external sources only if DB returned few results
-  let externalItems: NormalizedMedia[] = [];
-  if (!isLightSearch || serializedDbItems.length < 5) {
-    const searchSignal = AbortSignal.timeout(150);
-    const [tmdbResults, anilistResults] = await Promise.all([
-      searchTmdb(filters.query, searchSignal).catch(() => []),
-      searchAniList(filters.query, searchSignal).catch(() => []),
-    ]);
-    externalItems = [...tmdbResults, ...anilistResults];
-    autoPersistSearchResults(externalItems).catch(() => {});
-  }
-
-  const existingTitles = new Set(serializedDbItems.map((item) => item.title.toLowerCase()));
-  const externalSummaries = externalItems
-    .filter((m) => !existingTitles.has(m.title.toLowerCase()))
-    .map(normalizedToSummary);
-
-  const combinedItems = [...serializedDbItems, ...externalSummaries];
-  const combinedTotal = (isLightSearch ? serializedDbItems.length : total) + externalSummaries.length;
-
-  return {
-    items: combinedItems.slice(0, pageSize),
-    total: combinedTotal,
-    page,
-    pageSize,
-    totalPages: Math.ceil(combinedTotal / pageSize),
-  };
 }
 
 
@@ -149,7 +190,11 @@ import { refreshMedia } from "@/lib/media/sync";
 const fetchDbMediaDetail = (id: string) =>
   unstable_cache(
     async () => {
-      const media = await prisma.media.findUnique({ where: { id }, include: detailRelations });
+      const media = await prisma.media.findUnique({ 
+        where: { id }, 
+        include: detailRelations,
+        relationLoadStrategy: "join" 
+      });
       return media ? serializeMediaDetail(media) : null;
     },
     [`media-detail-${id}`],
@@ -185,33 +230,46 @@ export const findMediaById = cache(async (id: string): Promise<MediaDetail | nul
   return fetchDbMediaDetail(id);
 });
 
+const inFlightHydrations = new Set<string>();
+
 /**
  * Automatically hydrates missing credits/platforms for a media item if they are empty.
- * Call this from a Suspense boundary so it doesn't block the critical render path.
+ * Uses Next.js after() to defer external TMDb syncing to the background so the user request is not blocked.
  */
 export async function hydrateMediaDetails(media: MediaDetail): Promise<MediaDetail> {
-  // If credits or platforms already exist, return immediately without blocking network calls
-  if ((media.credits && media.credits.length > 0) || (media.platforms && media.platforms.length > 0)) {
+  const hasCredits = media.credits && media.credits.length > 0;
+  const hasPlatforms = media.platforms && media.platforms.length > 0;
+
+  if (hasCredits && hasPlatforms) {
     return media;
   }
 
   const isStale = !media.sourceUpdatedAt || 
     (new Date().getTime() - new Date(media.sourceUpdatedAt).getTime() > 7 * 24 * 60 * 60 * 1000);
+  const isMissingDetails = !hasCredits && !hasPlatforms;
+  const recentlySynced = media.lastSyncedAt && (new Date().getTime() - new Date(media.lastSyncedAt).getTime() < 60 * 60 * 1000);
 
-  if (!isStale) {
-    return media;
-  }
-
-  try {
-    const refreshed = await refreshMedia(media.source, media.sourceId, media.mediaType as any);
-    const reFetched = await prisma.media.findUnique({ where: { id: refreshed.id }, include: detailRelations });
-    if (reFetched) {
-      return serializeMediaDetail(reFetched);
+  if ((isStale || isMissingDetails) && !recentlySynced && !inFlightHydrations.has(media.id)) {
+    inFlightHydrations.add(media.id);
+    try {
+      if (typeof after === "function") {
+        after(async () => {
+          try {
+            await refreshMedia(media.source, media.sourceId, media.mediaType as any);
+          } catch {
+            // Background sync error handled gracefully
+          } finally {
+            inFlightHydrations.delete(media.id);
+          }
+        });
+      } else {
+        inFlightHydrations.delete(media.id);
+      }
+    } catch {
+      inFlightHydrations.delete(media.id);
     }
-  } catch {
-    // Return original media silently on timeout or network error
   }
-  
+
   return media;
 }
 
@@ -224,174 +282,200 @@ import {
   type AiUserProfile,
 } from "@/lib/ai/client";
 
-export async function getPersonalizedRecommendations(
-  userId: string | null,
-  limit = 6
-): Promise<MediaSummary[]> {
-  // 1. Fetch candidate media from DB
-  const candidateRows = await prisma.media.findMany({
-    where: {
-      status: { in: ["RELEASED", "FINISHED"] },
-      posterUrl: { not: null },
-    },
-    include: summaryRelations,
-    orderBy: [{ popularity: "desc" }, { voteCount: "desc" }],
-    take: 36,
-  });
+const getCachedRecs = unstable_cache(
+  async (userId: string | null, limit: number) => {
+    // 1. Fetch candidate media from DB with narrow select
+    const candidateRows = await prisma.media.findMany({
+      where: {
+        status: { in: ["RELEASED", "FINISHED"] },
+        posterUrl: { not: null },
+      },
+      select: narrowCardSelect,
+      orderBy: [{ popularity: "desc" }, { voteCount: "desc" }],
+      take: 24,
+    });
 
-  const candidates: AiMediaItem[] = candidateRows.map((m) => ({
-    id: m.id,
-    title: m.title,
-    originalTitle: m.originalTitle,
-    mediaType: m.mediaType,
-    genres: m.genres.map((g) => g.genre.name),
-    description: m.description,
-    year: m.year,
-    averageRating: m.averageRating,
-    popularity: m.popularity,
-    posterUrl: m.posterUrl,
-  }));
+    const candidates: AiMediaItem[] = candidateRows.map((m: any) => ({
+      id: m.id,
+      title: m.title,
+      originalTitle: m.originalTitle,
+      mediaType: m.mediaType,
+      genres: m.genres.map((g: any) => g.genre.name),
+      description: m.description,
+      year: m.year,
+      averageRating: m.averageRating,
+      popularity: m.popularity,
+      posterUrl: m.posterUrl,
+    }));
 
-  const candidateMap = new Map(candidateRows.map((m) => [m.id, serializeMediaSummary(m)]));
+    const candidateMap = new Map(candidateRows.map((m: any) => [m.id, serializeMediaSummary(m)]));
 
-  if (!userId) {
-    // Guest fallback: top rated with default match percentages
-    const defaultPcts = [96, 94, 91, 89, 88, 86];
-    return candidateRows.slice(0, limit).map((m, idx) => {
+    if (!userId) {
+      // Guest fallback: top rated with default match percentages
+      const defaultPcts = [96, 94, 91, 89, 88, 86];
+      return candidateRows.slice(0, limit).map((m: any, idx: number) => {
+        const summary = serializeMediaSummary(m);
+        summary.matchPercentage = defaultPcts[idx % defaultPcts.length];
+        summary.recommendationReason = m.genres[0]
+          ? `Top pick in ${m.genres[0].genre.name}`
+          : "Trending on MovieMinds";
+        return summary;
+      });
+    }
+
+    // 2. Fetch User's library, ratings, and profile for AI engine
+    const [userProfile, library, ratings, favorites] = await Promise.all([
+      prisma.user.findUnique({ where: { id: userId }, select: { favoriteGenres: true } }).catch(() => null),
+      prisma.userLibrary.findMany({ where: { userId } }).catch(() => []),
+      prisma.userRating.findMany({ where: { userId } }).catch(() => []),
+      prisma.userFavorite.findMany({ where: { userId } }).catch(() => []),
+    ]);
+
+    const favSet = new Set(favorites.map((f) => f.mediaId));
+    const ratingMap = new Map(ratings.map((r) => [r.mediaId, Number(r.rating)]));
+    const statusMap = new Map(library.map((l) => [l.mediaId, l.status]));
+
+    const allInteractedMediaIds = new Set([
+      ...library.map((l) => l.mediaId),
+      ...ratings.map((r) => r.mediaId),
+      ...favorites.map((f) => f.mediaId),
+    ]);
+
+    const interactions = Array.from(allInteractedMediaIds).map((mId) => ({
+      mediaId: mId,
+      rating: ratingMap.get(mId) ?? null,
+      status: statusMap.get(mId) ?? null,
+      isFavorite: favSet.has(mId),
+    }));
+
+    const aiUserPayload: AiUserProfile = {
+      userId,
+      favoriteGenres: userProfile?.favoriteGenres ?? [],
+      interactions,
+    };
+
+    // 3. Call Python AI Microservice
+    const aiResults = await getAiUserRecommendations(aiUserPayload, candidates, limit);
+
+    if (aiResults && aiResults.length > 0) {
+      const recommended: MediaSummary[] = [];
+      for (const res of aiResults) {
+        const item = candidateMap.get(res.mediaId);
+        if (item) {
+          recommended.push({
+            ...item,
+            matchPercentage: res.matchPercentage,
+            recommendationReason: res.reason,
+          });
+        }
+      }
+      if (recommended.length >= limit) {
+        return recommended.slice(0, limit);
+      }
+    }
+
+    // 4. Heuristic Fallback if AI service is offline
+    const fallbackPcts = [94, 91, 88, 87, 85, 83];
+    return candidateRows.slice(0, limit).map((m: any, idx: number) => {
       const summary = serializeMediaSummary(m);
-      summary.matchPercentage = defaultPcts[idx % defaultPcts.length];
+      summary.matchPercentage = fallbackPcts[idx % fallbackPcts.length];
       summary.recommendationReason = m.genres[0]
         ? `Top pick in ${m.genres[0].genre.name}`
         : "Trending on MovieMinds";
       return summary;
     });
+  },
+  ["personalized-recommendations"],
+  { revalidate: 1800, tags: ["user-recs", "catalog"] }
+);
+
+export async function getPersonalizedRecommendations(
+  userId: string | null,
+  limit = 6
+): Promise<MediaSummary[]> {
+  try {
+    return await getCachedRecs(userId, limit);
+  } catch (error) {
+    logger.error({ msg: "getPersonalizedRecommendations failed — returning empty", error });
+    return [];
   }
-
-  // 2. Fetch User's library, ratings, and profile for AI engine
-  const [userProfile, library, ratings, favorites] = await Promise.all([
-    prisma.user.findUnique({ where: { id: userId }, select: { favoriteGenres: true } }).catch(() => null),
-    prisma.userLibrary.findMany({ where: { userId } }).catch(() => []),
-    prisma.userRating.findMany({ where: { userId } }).catch(() => []),
-    prisma.userFavorite.findMany({ where: { userId } }).catch(() => []),
-  ]);
-
-  const favSet = new Set(favorites.map((f) => f.mediaId));
-  const ratingMap = new Map(ratings.map((r) => [r.mediaId, Number(r.rating)]));
-  const statusMap = new Map(library.map((l) => [l.mediaId, l.status]));
-
-  const allInteractedMediaIds = new Set([
-    ...library.map((l) => l.mediaId),
-    ...ratings.map((r) => r.mediaId),
-    ...favorites.map((f) => f.mediaId),
-  ]);
-
-  const interactions = Array.from(allInteractedMediaIds).map((mId) => ({
-    mediaId: mId,
-    rating: ratingMap.get(mId) ?? null,
-    status: statusMap.get(mId) ?? null,
-    isFavorite: favSet.has(mId),
-  }));
-
-  const aiUserPayload: AiUserProfile = {
-    userId,
-    favoriteGenres: userProfile?.favoriteGenres ?? [],
-    interactions,
-  };
-
-  // 3. Call Python AI Microservice
-  const aiResults = await getAiUserRecommendations(aiUserPayload, candidates, limit);
-
-  if (aiResults && aiResults.length > 0) {
-    const recommended: MediaSummary[] = [];
-    for (const res of aiResults) {
-      const item = candidateMap.get(res.mediaId);
-      if (item) {
-        recommended.push({
-          ...item,
-          matchPercentage: res.matchPercentage,
-          recommendationReason: res.reason,
-        });
-      }
-    }
-    if (recommended.length >= limit) {
-      return recommended.slice(0, limit);
-    }
-  }
-
-  // 4. Heuristic Fallback if AI service is offline
-  const fallbackPcts = [94, 91, 88, 87, 85, 83];
-  return candidateRows.slice(0, limit).map((m, idx) => {
-    const summary = serializeMediaSummary(m);
-    summary.matchPercentage = fallbackPcts[idx % fallbackPcts.length];
-    summary.recommendationReason = m.genres[0]
-      ? `Top pick in ${m.genres[0].genre.name}`
-      : "Trending on MovieMinds";
-    return summary;
-  });
 }
+
+const getCachedSimilar = unstable_cache(
+  async (targetId: string, targetMediaType: string, targetTitle: string, targetGenres: string[], limit: number) => {
+    const candidates = await prisma.media.findMany({
+      where: {
+        id: { not: targetId },
+        mediaType: targetMediaType as any,
+      },
+      select: narrowCardSelect,
+      orderBy: { popularity: "desc" },
+      take: 18,
+    });
+
+    const candidateSummaries = candidates.map((c: any) => serializeMediaSummary(c));
+    const candidateMap = new Map(candidateSummaries.map((c) => [c.id, c]));
+
+    const targetAi: AiMediaItem = {
+      id: targetId,
+      title: targetTitle,
+      mediaType: targetMediaType,
+      genres: targetGenres,
+    };
+
+    const candidateAi: AiMediaItem[] = candidateSummaries.map((c) => ({
+      id: c.id,
+      title: c.title,
+      originalTitle: c.originalTitle,
+      mediaType: c.mediaType,
+      genres: c.genres.map((g) => g.name),
+      year: c.year,
+      averageRating: c.averageRating,
+      popularity: c.popularity,
+      posterUrl: c.posterUrl,
+    }));
+
+    const aiSimilar = await getAiSimilarMedia(targetAi, candidateAi, limit);
+    if (aiSimilar && aiSimilar.length > 0) {
+      const results: MediaSummary[] = [];
+      for (const s of aiSimilar) {
+        const item = candidateMap.get(s.mediaId);
+        if (item) {
+          results.push({
+            ...item,
+            matchPercentage: s.matchPercentage,
+            recommendationReason:
+              s.sharedGenres.length > 0
+                ? `Shared ${s.sharedGenres.join(", ")}`
+                : `Similar to ${targetTitle}`,
+          });
+        }
+      }
+      if (results.length > 0) return results;
+    }
+
+    return candidateSummaries.slice(0, limit);
+  },
+  ["similar-media"],
+  { revalidate: 3600, tags: ["similar-media"] }
+);
 
 export async function findSimilarMedia(
   media: MediaDetail,
   limit = 8,
 ): Promise<MediaSummary[]> {
-  const candidates = await prisma.media.findMany({
-    where: {
-      id: { not: media.id },
-      mediaType: media.mediaType as any,
-    },
-    include: summaryRelations,
-    orderBy: { popularity: "desc" },
-    take: 24,
-  });
-
-  const candidateMap = new Map(candidates.map((c) => [c.id, serializeMediaSummary(c)]));
-
-  const targetAi: AiMediaItem = {
-    id: media.id,
-    title: media.title,
-    originalTitle: media.originalTitle,
-    mediaType: media.mediaType,
-    genres: media.genres.map((g) => g.name),
-    description: media.description,
-    year: media.year,
-    averageRating: media.averageRating,
-    popularity: media.popularity,
-    posterUrl: media.posterUrl,
-  };
-
-  const candidateAi: AiMediaItem[] = candidates.map((c) => ({
-    id: c.id,
-    title: c.title,
-    originalTitle: c.originalTitle,
-    mediaType: c.mediaType,
-    genres: c.genres.map((g) => g.genre.name),
-    description: c.description,
-    year: c.year,
-    averageRating: c.averageRating,
-    popularity: c.popularity,
-    posterUrl: c.posterUrl,
-  }));
-
-  const aiSimilar = await getAiSimilarMedia(targetAi, candidateAi, limit);
-  if (aiSimilar && aiSimilar.length > 0) {
-    const results: MediaSummary[] = [];
-    for (const s of aiSimilar) {
-      const item = candidateMap.get(s.mediaId);
-      if (item) {
-        results.push({
-          ...item,
-          matchPercentage: s.matchPercentage,
-          recommendationReason:
-            s.sharedGenres.length > 0
-              ? `Shared ${s.sharedGenres.join(", ")}`
-              : `Similar to ${media.title}`,
-        });
-      }
-    }
-    if (results.length > 0) return results;
+  try {
+    return await getCachedSimilar(
+      media.id,
+      media.mediaType,
+      media.title,
+      media.genres.map((g) => g.name),
+      limit
+    );
+  } catch (error) {
+    logger.error({ msg: "findSimilarMedia failed — returning empty", error });
+    return [];
   }
-
-  return candidates.slice(0, limit).map(serializeMediaSummary);
 }
 
 export const getGenres = unstable_cache(
@@ -401,10 +485,20 @@ export const getGenres = unstable_cache(
   { revalidate: 3600, tags: ["catalog"] },
 );
 
+export const emptyExploreSections = {
+  trending: [] as MediaSummary[],
+  popularMovies: [] as MediaSummary[],
+  popularAnime: [] as MediaSummary[],
+  topRated: [] as MediaSummary[],
+  newReleases: [] as MediaSummary[],
+  upcoming: [] as MediaSummary[],
+  recentlyAdded: [] as MediaSummary[],
+};
+
 export const getExploreSections = unstable_cache(
   async () => {
     const query = async (filters: MediaFilters, limit = 8) =>
-      (await findMedia({ ...filters, pageSize: limit })).items;
+      (await findMedia({ ...filters, pageSize: limit }, { skipCount: true })).items;
     return {
       trending: await query({ sort: "popular" }),
       popularMovies: await query({ types: ["MOVIE"], sort: "popular" }),
@@ -419,5 +513,5 @@ export const getExploreSections = unstable_cache(
     };
   },
   ["explore-sections"],
-  { revalidate: 3600, tags: ["explore"] }
+  { revalidate: 3600, tags: ["explore", "catalog"] }
 );

@@ -4,10 +4,14 @@ from datetime import datetime
 from email.utils import parsedate_to_datetime
 from .db import get_db_connection
 
+from .logger import get_logger
+
 ANN_RSS_URL = "https://www.animenewsnetwork.com/news/rss.xml"
 
-def scrape_news():
-    print("[News Spider] Starting to scrape Anime News Network...")
+def scrape_news(run_id: str = None):
+    logger = get_logger("news_spider", "scrape_news", run_id)
+    logger.info("Starting to scrape Anime News Network")
+    
     try:
         response = requests.get(ANN_RSS_URL, timeout=10)
         response.raise_for_status()
@@ -17,6 +21,10 @@ def scrape_news():
         
         conn = get_db_connection()
         with conn.cursor() as cursor:
+            import os
+            if os.environ.get('TESTING') == '1':
+                cursor.execute("SET search_path TO test_schema;")
+                
             for item in root.findall('./channel/item'):
                 title = item.find('title').text if item.find('title') is not None else "No Title"
                 link = item.find('link').text if item.find('link') is not None else ""
@@ -40,10 +48,12 @@ def scrape_news():
                     )
                     articles_added += 1
                     
-            print(f"[News Spider] Successfully added {articles_added} new articles.")
+            conn.commit()
+            logger.info(f"Successfully added {articles_added} new articles", extra={"articles_added": articles_added})
             
     except Exception as e:
-        print(f"[News Spider] Error scraping news: {e}")
+        logger.error(f"Error scraping news: {e}", extra={"error_type": type(e).__name__})
+        raise
     finally:
         if 'conn' in locals() and conn:
             conn.close()

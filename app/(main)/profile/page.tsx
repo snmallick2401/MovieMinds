@@ -11,27 +11,31 @@ export default async function ProfilePage() {
   if (!user) return null;
 
   const [profile, stats, dashboard, recentReviews] = await Promise.all([
-    prisma.user.findUniqueOrThrow({ where: { id: user.id } }),
+    prisma.user.findUnique({ where: { id: user.id } }).catch(() => null),
     getUserStats(user.id),
     getLibraryDashboard(user.id),
-    prisma.review.findMany({
-      where: { userId: user.id },
-      include: {
-        media: {
-          select: {
-            id: true,
-            title: true,
-            mediaType: true,
-            year: true,
-            posterUrl: true,
-            averageRating: true,
+    prisma.review
+      .findMany({
+        where: { userId: user.id },
+        include: {
+          media: {
+            select: {
+              id: true,
+              title: true,
+              mediaType: true,
+              year: true,
+              posterUrl: true,
+              averageRating: true,
+            },
           },
         },
-      },
-      orderBy: { updatedAt: "desc" },
-      take: 3,
-    }),
+        orderBy: { updatedAt: "desc" },
+        take: 3,
+      })
+      .catch(() => []),
   ]);
+
+  if (!profile) return null;
 
   const recentActivity = dashboard.items[0] ?? null;
 

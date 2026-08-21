@@ -2,11 +2,13 @@ import asyncio
 from playwright.async_api import async_playwright
 from .db import get_db_connection
 
+from .logger import get_logger
+
 # A robust Playwright scraper for streaming availability
 # This spider simulates opening a Javascript-heavy platform to scrape streaming links
 
-async def run_playwright():
-    print("[Availability Spider] Launching headless browser...")
+async def run_playwright(logger):
+    logger.info("Launching headless browser")
     async with async_playwright() as p:
         # Using Chromium headless
         browser = await p.chromium.launch(headless=True)
@@ -24,13 +26,19 @@ async def run_playwright():
         await browser.close()
         return platforms_scraped
 
-def scrape_availability():
-    print("[Availability Spider] Starting availability sync...")
+def scrape_availability(run_id: str = None):
+    logger = get_logger("availability_spider", "scrape_availability", run_id)
+    logger.info("Starting availability sync")
+    
     try:
-        results = asyncio.run(run_playwright())
+        results = asyncio.run(run_playwright(logger))
         
         conn = get_db_connection()
         with conn.cursor() as cursor:
+            import os
+            if os.environ.get('TESTING') == '1':
+                cursor.execute("SET search_path TO test_schema;")
+            
             updates_applied = 0
             for item in results:
                 # 1. Ensure platform exists
@@ -63,13 +71,15 @@ def scrape_availability():
                 )
                 updates_applied += 1
                 
-            print(f"[Availability Spider] Successfully updated {updates_applied} streaming links.")
+            conn.commit()
+            logger.info(f"Successfully updated {updates_applied} streaming links", extra={"updates_applied": updates_applied})
             
     except Exception as e:
-        print(f"[Availability Spider] Error syncing availability: {e}")
+        logger.error(f"Error syncing availability: {e}", extra={"error_type": type(e).__name__})
+        raise
     finally:
-        # Note: in a real implementation you would check if conn exists in locals
-        pass
+        if 'conn' in locals() and conn:
+            conn.close()
 
 if __name__ == "__main__":
     scrape_availability()

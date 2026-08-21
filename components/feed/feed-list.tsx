@@ -4,30 +4,34 @@ import { TrendingFeed } from "./trending-feed";
 
 export async function FeedList({ userId }: { userId: string }) {
   // Get users this user follows
-  const follows = await prisma.follow.findMany({
-    where: { followerId: userId },
-    select: { followingId: true },
-  });
+  const follows = await prisma.follow
+    .findMany({
+      where: { followerId: userId },
+      select: { followingId: true },
+    })
+    .catch(() => []);
 
   const followingIds = follows.map((f) => f.followingId);
 
   // Add own ID to see their own activities (optional, but good for testing)
   followingIds.push(userId);
 
-  const activities = await prisma.activity.findMany({
-    where: {
-      userId: { in: followingIds },
-    },
-    include: {
-      user: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
-      targetUser: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
-      media: { select: { id: true, title: true, posterUrl: true, mediaType: true } },
-      review: { select: { id: true, body: true, spoiler: true } },
-      rating: { select: { id: true, rating: true } },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
+  const activities = await prisma.activity
+    .findMany({
+      where: {
+        userId: { in: followingIds },
+      },
+      include: {
+        user: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
+        targetUser: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
+        media: { select: { id: true, title: true, posterUrl: true, mediaType: true } },
+        review: { select: { id: true, body: true, spoiler: true } },
+        rating: { select: { id: true, rating: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    })
+    .catch(() => []);
 
   if (activities.length === 0) {
     return (

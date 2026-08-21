@@ -14,10 +14,12 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function generateMetadata({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;
-  const profile = await prisma.user.findUnique({
-    where: { username },
-    select: { displayName: true, bio: true, avatarUrl: true, bannerUrl: true },
-  });
+  const profile = await prisma.user
+    .findUnique({
+      where: { username },
+      select: { displayName: true, bio: true, avatarUrl: true, bannerUrl: true },
+    })
+    .catch(() => null);
   if (!profile) return {};
   return {
     title: `${profile.displayName} (@${username})`,
@@ -38,17 +40,19 @@ export default async function PublicProfilePage({
   const { username } = await params;
   const { tab = "overview", status } = await searchParams;
   
-  const profile = await prisma.user.findUnique({
-    where: { username },
-    include: {
-      favorites: {
-        include: {
-          media: { select: { id: true, title: true, posterUrl: true, year: true, mediaType: true } }
-        },
-        orderBy: { position: "asc" }
+  const profile = await prisma.user
+    .findUnique({
+      where: { username },
+      include: {
+        favorites: {
+          include: {
+            media: { select: { id: true, title: true, posterUrl: true, year: true, mediaType: true } }
+          },
+          orderBy: { position: "asc" }
+        }
       }
-    }
-  });
+    })
+    .catch(() => null);
   
   if (!profile) notFound();
   
@@ -59,8 +63,8 @@ export default async function PublicProfilePage({
   const isCurrentUser = authUser?.id === profile.id;
   
   const [followersCount, followingCount, isFollowing] = await Promise.all([
-    prisma.follow.count({ where: { followingId: profile.id } }),
-    prisma.follow.count({ where: { followerId: profile.id } }),
+    prisma.follow.count({ where: { followingId: profile.id } }).catch(() => 0),
+    prisma.follow.count({ where: { followerId: profile.id } }).catch(() => 0),
     authUser ? prisma.follow.findUnique({
       where: {
         followerId_followingId: {
@@ -68,7 +72,7 @@ export default async function PublicProfilePage({
           followingId: profile.id,
         }
       }
-    }).then(f => !!f) : Promise.resolve(false),
+    }).then(f => !!f).catch(() => false) : Promise.resolve(false),
   ]);
   
   return (
