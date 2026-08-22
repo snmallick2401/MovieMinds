@@ -51,12 +51,15 @@ lerna-debug.log*
 # Temporary & Test Artifacts
 scratch/
 artifacts/
+test/
+tests/
+ai-engine/tests/
+ai-engine/test_*.py
+.env.test
 *.webm
 *.mp4
 *.mkv
 test-guard.json
-test/*.html
-test/*.png
 report/
 attack on titan/
 
