@@ -20,7 +20,7 @@ export async function LibraryTab({ userId, username, filterStatus }: { userId: s
     },
     include: {
       media: {
-        select: { id: true, title: true, posterUrl: true, year: true, mediaType: true }
+        select: { id: true, slug: true, title: true, posterUrl: true, year: true, mediaType: true }
       }
     },
     orderBy: { updatedAt: "desc" },
@@ -65,7 +65,7 @@ export async function LibraryTab({ userId, username, filterStatus }: { userId: s
             <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
               {entries.map((entry) => (
                 <div key={entry.id} className="group relative flex flex-col gap-2 transition-transform hover:scale-105">
-                  <Link href={`/media/${entry.media.id}`} className="block">
+                  <Link href={`/media/${entry.media.slug || entry.media.id}`} className="block">
                     <div className="relative aspect-[2/3] w-full overflow-hidden rounded-md border border-border shadow-sm">
                       {entry.media.posterUrl ? (
                         <Image 
@@ -92,7 +92,7 @@ export async function LibraryTab({ userId, username, filterStatus }: { userId: s
                   </Link>
                   
                   <div className="px-1 text-center">
-                    <Link href={`/media/${entry.media.id}`} className="line-clamp-2 text-xs font-medium hover:underline leading-tight">
+                    <Link href={`/media/${entry.media.slug || entry.media.id}`} className="line-clamp-2 text-xs font-medium hover:underline leading-tight">
                       {entry.media.title}
                     </Link>
                   </div>

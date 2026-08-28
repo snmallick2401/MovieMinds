@@ -16,6 +16,7 @@ const config = [
       "test/**",
       "tests/**",
       "ai-engine/**",
+      "next-env.d.ts",
     ],
   },
   {
@@ -23,6 +24,7 @@ const config = [
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unused-vars": "off",
       "@typescript-eslint/no-require-imports": "off",
+      "@typescript-eslint/triple-slash-reference": "off",
       "react/no-unescaped-entities": "off",
       "prefer-const": "off",
     },

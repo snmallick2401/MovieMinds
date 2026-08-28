@@ -57,7 +57,7 @@ export function ActivityCard({ activity }: ActivityCardProps) {
             </Link>
           )}
           {media && !targetUser && (
-            <Link href={`/media/${media.id}`} className="font-bold text-foreground hover:underline truncate max-w-[200px]">
+            <Link href={`/media/${media.slug || media.id}`} className="font-bold text-foreground hover:underline truncate max-w-[200px]">
               {media.title}
             </Link>
           )}
@@ -69,7 +69,7 @@ export function ActivityCard({ activity }: ActivityCardProps) {
         {/* Media / Review Context */}
         {media && (type === "REVIEWED" || type === "RATED" || type === "COMPLETED") && (
           <div className="mt-3 flex gap-4 rounded-xl border border-border/50 bg-background/50 p-3">
-            <Link href={`/media/${media.id}`} className="shrink-0 relative h-24 w-16 overflow-hidden rounded-md shadow-sm transition-transform hover:scale-105">
+            <Link href={`/media/${media.slug || media.id}`} className="shrink-0 relative h-24 w-16 overflow-hidden rounded-md shadow-sm transition-transform hover:scale-105">
               {media.posterUrl ? (
                 <Image src={media.posterUrl} alt={media.title} fill className="object-cover" sizes="64px" />
               ) : (
@@ -78,7 +78,7 @@ export function ActivityCard({ activity }: ActivityCardProps) {
             </Link>
             
             <div className="flex flex-col flex-1 py-1">
-              <Link href={`/media/${media.id}`} className="font-bold hover:underline line-clamp-1">
+              <Link href={`/media/${media.slug || media.id}`} className="font-bold hover:underline line-clamp-1">
                 {media.title}
               </Link>
               

@@ -18,6 +18,19 @@ export function SearchBar({ compact = false }: { compact?: boolean }) {
   const [recent, setRecent] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    if (open) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [open]);
 
   useEffect(() => {
     setRecent(JSON.parse(window.localStorage.getItem(RECENT_KEY) ?? "[]") as string[]);
@@ -57,7 +70,7 @@ export function SearchBar({ compact = false }: { compact?: boolean }) {
   }
 
   return (
-    <div className={`relative ${compact ? "w-full" : "max-w-md flex-1"}`}>
+    <div ref={containerRef} className={`relative ${compact ? "w-full" : "max-w-md flex-1"}`}>
       <Search className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
       <Input
         ref={inputRef}

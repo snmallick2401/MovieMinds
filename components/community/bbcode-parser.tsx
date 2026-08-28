@@ -24,7 +24,8 @@ export function BBCodeParser({ content }: { content: string }) {
         if (imgMatch) {
           return (
             <div key={i} className="my-4 relative rounded-xl overflow-hidden border border-border/50 max-w-full inline-block">
-              <img src={imgMatch[1]} alt="User uploaded image" className="max-w-full max-h-[600px] object-contain" loading="lazy" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={imgMatch[1]} alt="User uploaded content" className="max-w-full max-h-[600px] object-contain" loading="lazy" />
             </div>
           );
         }

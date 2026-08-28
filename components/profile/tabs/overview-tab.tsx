@@ -45,7 +45,7 @@ export function OverviewTab({ profile, stats }: { profile: ProfileWithFavorites,
                     {group.items.map((fav) => (
                       <Link 
                         key={fav.id} 
-                        href={`/media/${fav.media.id}`}
+                        href={`/media/${fav.media.slug || fav.media.id}`}
                         className="group relative aspect-[2/3] overflow-hidden rounded-lg border border-border shadow-sm transition-transform hover:scale-105"
                       >
                         {fav.media.posterUrl ? (

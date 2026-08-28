@@ -43,11 +43,11 @@ export function PostCard({
       {/* Main Content Area */}
       <div className="flex-1 min-w-0 flex flex-col p-4 sm:p-5">
         <div className="flex items-center justify-between text-xs text-muted-foreground mb-4 pb-3 border-b border-border/40">
-          <time dateTime={post.createdAt.toISOString()}>
-            {formatDistanceToNow(post.createdAt, { addSuffix: true })}
+          <time dateTime={new Date(post.createdAt).toISOString()}>
+            {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
           </time>
           <div className="flex items-center gap-4">
-            {isEdited && <span>Edited {formatDistanceToNow(post.editedAt, { addSuffix: true })}</span>}
+            {isEdited && post.editedAt && <span>Edited {formatDistanceToNow(new Date(post.editedAt), { addSuffix: true })}</span>}
             <span className="opacity-50">#{post.id.slice(-5)}</span>
           </div>
         </div>

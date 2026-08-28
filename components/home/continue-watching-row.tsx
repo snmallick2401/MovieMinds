@@ -18,6 +18,7 @@ export function ContinueWatchingRow({
   const displayItems = userEntries.length
     ? userEntries.map((entry) => ({
         id: entry.media.id,
+        slug: entry.media.slug ?? null,
         title: entry.media.title,
         posterUrl: entry.media.posterUrl,
         mediaType: entry.media.mediaType,
@@ -40,6 +41,7 @@ export function ContinueWatchingRow({
         ];
         return {
           id: item.id,
+          slug: item.slug ?? null,
           title: item.title,
           posterUrl: item.posterUrl,
           mediaType: item.mediaType,
@@ -70,7 +72,7 @@ export function ContinueWatchingRow({
         {displayItems.map((item) => (
           <Link
             key={item.id}
-            href={`/media/${item.id}`}
+            href={`/media/${item.slug ?? item.id}`}
             className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-purple-500/40 hover:shadow-xl"
           >
             {/* Poster Image Container */}

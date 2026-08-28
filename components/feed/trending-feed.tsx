@@ -13,7 +13,7 @@ const getCachedTrendingActivities = unstable_cache(
         include: {
           user: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
           targetUser: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
-          media: { select: { id: true, title: true, posterUrl: true, mediaType: true } },
+          media: { select: { id: true, slug: true, title: true, posterUrl: true, mediaType: true } },
           review: { select: { id: true, body: true, spoiler: true } },
           rating: { select: { id: true, rating: true } },
         },

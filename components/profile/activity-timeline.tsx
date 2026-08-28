@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { formatDistanceToNow } from "date-fns";
@@ -14,6 +14,7 @@ type Activity = {
   createdAt: string;
   media: {
     id: string;
+    slug?: string | null;
     title: string;
     posterUrl: string | null;
     year: number | null;
@@ -37,7 +38,7 @@ export function ActivityTimeline({ username }: { username: string }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  const fetchActivities = async (cursor?: string) => {
+  const fetchActivities = useCallback(async (cursor?: string) => {
     try {
       const url = new URL(`/api/users/${username}/activity`, window.location.origin);
       if (cursor) url.searchParams.set("cursor", cursor);
@@ -54,11 +55,11 @@ export function ActivityTimeline({ username }: { username: string }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [username]);
 
   useEffect(() => {
     fetchActivities();
-  }, [username]);
+  }, [fetchActivities]);
 
   if (isLoading && activities.length === 0) {
     return <div className="space-y-4">
@@ -91,7 +92,7 @@ export function ActivityTimeline({ username }: { username: string }) {
             
             <div className="rounded-xl border border-border bg-card p-4 transition-colors hover:bg-muted/50">
               <div className="flex gap-4">
-                <Link href={`/media/${activity.media.id}`} className="shrink-0">
+                <Link href={`/media/${activity.media.slug || activity.media.id}`} className="shrink-0">
                   {activity.media.posterUrl ? (
                     <Image
                       src={activity.media.posterUrl}
@@ -116,7 +117,7 @@ export function ActivityTimeline({ username }: { username: string }) {
                       {activity.type === "STARTED" && "started watching"}
                       {activity.type === "WISHLISTED" && "added to wishlist"}
                     </span>{" "}
-                    <Link href={`/media/${activity.media.id}`} className="font-semibold text-primary hover:underline">
+                    <Link href={`/media/${activity.media.slug || activity.media.id}`} className="font-semibold text-primary hover:underline">
                       {activity.media.title}
                     </Link>
                   </p>

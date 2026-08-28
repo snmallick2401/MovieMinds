@@ -33,7 +33,7 @@ export default async function MediaCommunityPage({
             Join the conversation about {media.title}. Share theories, reviews, and discoveries.
           </p>
         </div>
-        <Link href={`/media/${media.id}/community/new`} className="shrink-0 gap-2 inline-flex items-center justify-center rounded-lg bg-primary text-primary-foreground h-10 px-4 py-2 text-sm font-medium hover:bg-primary/90 transition-colors">
+        <Link href={`/media/${media.slug || media.id}/community/new`} className="shrink-0 gap-2 inline-flex items-center justify-center rounded-lg bg-primary text-primary-foreground h-10 px-4 py-2 text-sm font-medium hover:bg-primary/90 transition-colors">
           <MessageSquarePlus className="size-4" />
           New Thread
         </Link>
@@ -50,7 +50,7 @@ export default async function MediaCommunityPage({
               Be the first to start a conversation about {media.title}!
             </p>
             <Link 
-              href={`/media/${media.id}/community/new`} 
+              href={`/media/${media.slug || media.id}/community/new`} 
               className="mt-6 inline-flex items-center justify-center rounded-lg border border-border bg-transparent h-10 px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
             >
               Start a Thread
@@ -70,7 +70,7 @@ export default async function MediaCommunityPage({
                         <span className="rounded bg-destructive/20 px-2 py-0.5 text-xs font-semibold text-destructive">Spoiler</span>
                       )}
                     </div>
-                    <Link href={`/media/${media.id}/community/${thread.id}`} className="block">
+                    <Link href={`/media/${media.slug || media.id}/community/${thread.id}`} className="block">
                       <h3 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors truncate">
                         {thread.title}
                       </h3>

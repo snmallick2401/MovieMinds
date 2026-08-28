@@ -9,7 +9,7 @@ export async function ReviewsTab({ userId, username }: { userId: string, usernam
     where: { userId, visibility: "PUBLIC" },
     include: {
       media: {
-        select: { id: true, title: true, posterUrl: true, year: true, mediaType: true }
+        select: { id: true, slug: true, title: true, posterUrl: true, year: true, mediaType: true }
       },
       user: {
         select: { id: true, displayName: true, username: true, avatarUrl: true }
@@ -39,7 +39,7 @@ export async function ReviewsTab({ userId, username }: { userId: string, usernam
       <div className="grid gap-6 md:grid-cols-2">
         {reviews.map((review) => (
           <div key={review.id} className="flex gap-4 p-5 rounded-xl border border-border bg-card shadow-sm hover:shadow-md transition-shadow">
-            <Link href={`/media/${review.media.id}`} className="shrink-0">
+            <Link href={`/media/${review.media.slug || review.media.id}`} className="shrink-0">
               <div className="relative h-32 w-24 overflow-hidden rounded-md border border-border">
                 {review.media.posterUrl ? (
                   <Image src={review.media.posterUrl} alt={review.media.title} fill className="object-cover" sizes="96px" />
@@ -54,7 +54,7 @@ export async function ReviewsTab({ userId, username }: { userId: string, usernam
             <div className="flex flex-col flex-1 min-w-0">
               <div className="flex justify-between items-start gap-2 mb-2">
                 <div>
-                  <Link href={`/media/${review.media.id}`} className="font-bold text-lg leading-tight hover:underline line-clamp-1">
+                  <Link href={`/media/${review.media.slug || review.media.id}`} className="font-bold text-lg leading-tight hover:underline line-clamp-1">
                     {review.media.title} <span className="font-normal text-muted-foreground text-sm">({review.media.year})</span>
                   </Link>
                   <p className="text-xs text-muted-foreground mt-1">

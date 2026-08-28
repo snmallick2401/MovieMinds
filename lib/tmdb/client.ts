@@ -76,7 +76,6 @@ export async function tmdbFetch<T>(path: string, init?: RequestInit): Promise<T>
     if (!response.ok)
       throw new Error(`TMDb request failed (${response.status}) for ${path}.`);
     return response.json() as Promise<T>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     throw error;
   }

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, Share2, Flag, Eye } from "lucide-react";
-import { findMediaById } from "@/lib/media/queries";
+import { findMediaBySlugOrId } from "@/lib/media/queries";
 import { getThreadById, getThreadPosts } from "@/lib/discussions/queries";
 import { PostCard } from "@/components/community/post-card";
 import { Button } from "@/components/ui/button";
@@ -12,15 +12,15 @@ export default async function ThreadPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ id: string; threadId: string }>;
+  params: Promise<{ slug: string; threadId: string }>;
   searchParams: Promise<{ page?: string }>;
 }) {
-  const { id, threadId } = await params;
+  const { slug, threadId } = await params;
   const sp = await searchParams;
   const page = Math.max(1, Number(sp.page) || 1);
 
   const [media, thread, postsData, supabase] = await Promise.all([
-    findMediaById(id),
+    findMediaBySlugOrId(slug),
     getThreadById(threadId),
     getThreadPosts(threadId, page, 20),
     createClient(),
@@ -36,7 +36,7 @@ export default async function ThreadPage({
       {/* Thread Header */}
       <div>
         <Link 
-          href={`/media/${media.id}/community`}
+          href={`/media/${media.slug || slug}/community`}
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
         >
           <ChevronLeft className="size-4" />

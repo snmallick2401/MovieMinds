@@ -110,7 +110,7 @@ export function RecentActivityRow({
                 </div>
 
                 <Link
-                  href={`/media/${act.media.id}`}
+                  href={`/media/${act.media.slug || act.media.id}`}
                   className="truncate font-bold text-sm text-foreground hover:text-purple-400"
                 >
                   {act.media.title}

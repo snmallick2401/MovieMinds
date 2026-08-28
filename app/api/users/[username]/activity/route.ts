@@ -35,6 +35,7 @@ export async function GET(
         media: {
           select: {
             id: true,
+            slug: true,
             title: true,
             posterUrl: true,
             year: true,

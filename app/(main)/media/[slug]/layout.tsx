@@ -142,7 +142,7 @@ export default async function MediaLayout({
             </div>
           </div>
           
-          <MediaTabs mediaId={media.id} />
+          <MediaTabs mediaId={media.slug || media.id} />
         </div>
       </section>
       
