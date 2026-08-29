@@ -70,3 +70,5 @@ Thumbs.db
 # Prisma
 prisma/migrations/*/migration_lock.toml
 DESIGN.md
+*.html
+design_preview.png
