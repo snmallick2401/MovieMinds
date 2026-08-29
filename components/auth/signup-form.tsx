@@ -3,7 +3,6 @@ import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Chrome } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { signupSchema, type SignupInput } from "@/lib/validations/auth";
 import { Button } from "@/components/ui/button";
@@ -29,20 +28,6 @@ export function SignupForm() {
       if (authError) return setError(authError.message);
       setConfirmation(!data.session);
       if (data.session) window.location.assign("/");
-    } catch {
-      setError(
-        "Supabase is not configured. Add your real project URL and anon key to .env.local, then restart npm run dev.",
-      );
-    }
-  }
-  async function google() {
-    setError(null);
-    try {
-      const { error: authError } = await createClient().auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: `${window.location.origin}/auth/callback` },
-      });
-      if (authError) setError(authError.message);
     } catch {
       setError(
         "Supabase is not configured. Add your real project URL and anon key to .env.local, then restart npm run dev.",
@@ -127,10 +112,6 @@ export function SignupForm() {
       )}
       <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
         {form.formState.isSubmitting ? "Creating account…" : "Create account"}
-      </Button>
-      <Button type="button" variant="outline" className="w-full" onClick={google}>
-        <Chrome className="size-4" />
-        Continue with Google
       </Button>
       <p className="pt-1 text-center text-sm text-muted-foreground">
         Already have an account?{" "}

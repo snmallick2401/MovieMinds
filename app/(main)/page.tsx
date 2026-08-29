@@ -64,20 +64,20 @@ export default async function HomePage() {
     totalPageMs: Math.round(tDataLoaded - t0),
   }));
 
-  const userName =
-    dbUser?.displayName ||
-    userMetadataName ||
-    userEmail?.split("@")[0] ||
-    "S N Mallick";
+  const isLoggedIn = Boolean(userId);
+  const userName = isLoggedIn
+    ? dbUser?.displayName || userMetadataName || userEmail?.split("@")[0] || null
+    : null;
 
   const watchingEntries = dashboard.items.filter((item) => item.status === "WATCHING");
 
   return (
     <div className="space-y-10">
-      {/* Welcome Hero Section */}
+      {/* Welcome / Landing Hero Section */}
       <HomeHero
         userName={userName}
-        stats={stats}
+        isLoggedIn={isLoggedIn}
+        stats={isLoggedIn ? stats : undefined}
         featuredPosters={exploreSections.trending}
       />
 

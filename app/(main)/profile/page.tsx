@@ -2,13 +2,14 @@ import { ModernProfileView } from "@/components/profile/modern-profile-view";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { getLibraryDashboard, getUserStats } from "@/lib/library/queries";
+import { redirect } from "next/navigation";
 
 export default async function ProfilePage() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return null;
+  if (!user) redirect("/login?next=/profile");
 
   const [profile, stats, dashboard, recentReviews] = await Promise.all([
     prisma.user.findUnique({ where: { id: user.id } }).catch(() => null),

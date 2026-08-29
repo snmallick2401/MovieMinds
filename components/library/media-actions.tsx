@@ -2,6 +2,7 @@
 
 import { Bookmark, Check, ChevronDown, Plus, Trash2, X } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { DragonBall } from "@/components/icons/dragon-ball";
 import { DragonBallRating } from "@/components/ratings/dragon-ball-rating";
@@ -33,6 +34,7 @@ export function MediaActions({
   episodeCount: number | null;
   libraryEntryId: string | null;
 }) {
+  const router = useRouter();
   const [status, setStatus] = useState<LibraryStatus | null>(initialStatus);
   const [entryId, setEntryId] = useState<string | null>(libraryEntryId);
   const [wishlist, setWishlist] = useState(inWishlist);
@@ -72,6 +74,10 @@ export function MediaActions({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mediaId, status: nextStatus, progress }),
       });
+      if (response.status === 401) {
+        router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+        return;
+      }
       const data = await response.json();
       if (response.ok) {
         setStatus(nextStatus);
@@ -93,6 +99,10 @@ export function MediaActions({
       const response = await fetch(`/api/library/${entryId}`, {
         method: "DELETE",
       });
+      if (response.status === 401) {
+        router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+        return;
+      }
       if (response.ok) {
         setStatus(null);
         setEntryId(null);
@@ -114,6 +124,10 @@ export function MediaActions({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mediaId }),
       });
+      if (response.status === 401) {
+        router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+        return;
+      }
       if (response.ok) {
         setWishlist(!wishlist);
         setMessage(wishlist ? "Removed from wishlist." : "Added to wishlist.");
@@ -134,6 +148,10 @@ export function MediaActions({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mediaId, rating: tempRating }),
       });
+      if (response.status === 401) {
+        router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+        return;
+      }
       if (response.ok) {
         setRating(tempRating);
         setRatingModalOpen(false);

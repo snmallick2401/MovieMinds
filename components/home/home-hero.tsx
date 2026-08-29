@@ -2,16 +2,18 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { CheckSquare, Clock, Flame, Shield, Sparkles, Star, Zap } from "lucide-react";
+import { CheckSquare, Clock, Film, Flame, MessageSquare, Shield, Sparkles, Star, Trophy, Zap } from "lucide-react";
 import type { MediaSummary } from "@/types/media";
 
 export function HomeHero({
   userName,
+  isLoggedIn = false,
   stats,
   featuredPosters,
 }: {
-  userName: string;
-  stats: {
+  userName?: string | null;
+  isLoggedIn?: boolean;
+  stats?: {
     totalWatched: number;
     hoursWatched: number;
     averageRating: number | null;
@@ -19,7 +21,7 @@ export function HomeHero({
   };
   featuredPosters: MediaSummary[];
 }) {
-  const topGenre = stats.favoriteGenres[0]?.name || "Drama";
+  const topGenre = stats?.favoriteGenres[0]?.name || "Drama";
   const posters = featuredPosters.slice(0, 4);
 
   return (
@@ -31,28 +33,66 @@ export function HomeHero({
       <div className="relative grid items-center gap-8 lg:grid-cols-[1.2fr_0.8fr]">
         {/* Left Side Content */}
         <div className="space-y-6">
-          <div>
-            <span className="inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-500/10 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-purple-400">
-              <Sparkles className="size-3.5" />
-              Welcome back
-            </span>
-            <h1 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl text-white">
-              Welcome back, <span className="text-purple-400 whitespace-nowrap">{userName}</span>.
-            </h1>
-            <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/70 sm:text-base">
-              Build your watchlist, keep track of every story, and find your next obsession.
-            </p>
-          </div>
+          {isLoggedIn ? (
+            <div>
+              <span className="inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-500/10 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-purple-400">
+                <Sparkles className="size-3.5" />
+                Welcome back
+              </span>
+              <h1 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl text-white">
+                Welcome back, <span className="text-purple-400 whitespace-nowrap">{userName || "Cinephile"}</span>.
+              </h1>
+              <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/70 sm:text-base">
+                Build your watchlist, keep track of every story, and find your next obsession.
+              </p>
+            </div>
+          ) : (
+            <div>
+              <span className="inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-500/10 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-purple-400">
+                <Sparkles className="size-3.5" />
+                Next-Gen Cinephile Universe
+              </span>
+              <h1 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl text-white leading-tight">
+                Discover, Track &amp; Rate <br className="hidden sm:inline" />
+                <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-amber-300 bg-clip-text text-transparent">
+                  Movies, Anime &amp; Series
+                </span>
+              </h1>
+              <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/70 sm:text-base">
+                The modern home for entertainment lovers. Browse thousands of titles, get AI-powered recommendations, rate with Dragon Balls, and connect with fellow fans.
+              </p>
+            </div>
+          )}
 
-          <div>
-            <Link
-              href="/explore"
-              className="inline-flex h-11 items-center justify-center gap-2.5 rounded-2xl bg-purple-600 px-6 text-xs font-bold text-white shadow-lg shadow-purple-600/30 transition-all hover:bg-purple-500 hover:shadow-purple-500/40"
-            >
-              <Zap className="size-4 fill-white" />
-              Start exploring
-              <span className="text-purple-200">→</span>
-            </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            {isLoggedIn ? (
+              <Link
+                href="/explore"
+                className="inline-flex h-11 items-center justify-center gap-2.5 rounded-2xl bg-purple-600 px-6 text-xs font-bold text-white shadow-lg shadow-purple-600/30 transition-all hover:bg-purple-500 hover:shadow-purple-500/40"
+              >
+                <Zap className="size-4 fill-white" />
+                Start exploring
+                <span className="text-purple-200">→</span>
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/signup"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 px-6 text-xs font-bold text-white shadow-lg shadow-purple-600/30 transition-all hover:from-purple-500 hover:to-indigo-500 hover:shadow-purple-500/40"
+                >
+                  <Sparkles className="size-4 fill-white" />
+                  Get Started Free
+                  <span className="text-purple-200">→</span>
+                </Link>
+                <Link
+                  href="/explore"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/5 px-6 text-xs font-bold text-white shadow-sm backdrop-blur-sm transition-all hover:bg-white/10"
+                >
+                  <Zap className="size-4" />
+                  Explore Catalog
+                </Link>
+              </>
+            )}
           </div>
         </div>
 
@@ -84,64 +124,118 @@ export function HomeHero({
         </div>
       </div>
 
-      {/* Bottom Quick Metrics Bar */}
-      <div className="relative mt-8 grid grid-cols-2 gap-3 border-t border-purple-500/20 pt-6 sm:grid-cols-3 lg:grid-cols-5">
-        <div className="flex items-center gap-3">
-          <div className="flex size-9 items-center justify-center rounded-xl border border-purple-500/20 bg-purple-500/10 text-purple-400">
-            <CheckSquare className="size-4" />
+      {/* Bottom Feature & Metrics Bar */}
+      {isLoggedIn && stats ? (
+        <div className="relative mt-8 grid grid-cols-2 gap-3 border-t border-purple-500/20 pt-6 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="flex items-center gap-3">
+            <div className="flex size-9 items-center justify-center rounded-xl border border-purple-500/20 bg-purple-500/10 text-purple-400">
+              <CheckSquare className="size-4" />
+            </div>
+            <div>
+              <p className="text-base font-extrabold leading-tight text-white">
+                {stats.totalWatched}
+              </p>
+              <p className="text-[11px] font-medium text-white/70">Completed</p>
+            </div>
           </div>
-          <div>
-            <p className="text-base font-extrabold leading-tight text-white">
-              {stats.totalWatched}
-            </p>
-            <p className="text-[11px] font-medium text-white/70">Completed</p>
-          </div>
-        </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex size-9 items-center justify-center rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-400">
-            <Clock className="size-4" />
+          <div className="flex items-center gap-3">
+            <div className="flex size-9 items-center justify-center rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-400">
+              <Clock className="size-4" />
+            </div>
+            <div>
+              <p className="text-base font-extrabold leading-tight text-white">
+                {stats.hoursWatched}
+              </p>
+              <p className="text-[11px] font-medium text-white/70">Hours watched</p>
+            </div>
           </div>
-          <div>
-            <p className="text-base font-extrabold leading-tight text-white">
-              {stats.hoursWatched}
-            </p>
-            <p className="text-[11px] font-medium text-white/70">Hours watched</p>
-          </div>
-        </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex size-9 items-center justify-center rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400">
-            <Star className="size-4" />
+          <div className="flex items-center gap-3">
+            <div className="flex size-9 items-center justify-center rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400">
+              <Star className="size-4" />
+            </div>
+            <div>
+              <p className="text-base font-extrabold leading-tight text-white">
+                {stats.averageRating ? stats.averageRating.toFixed(1) : "—"}
+              </p>
+              <p className="text-[11px] font-medium text-white/70">Average rating</p>
+            </div>
           </div>
-          <div>
-            <p className="text-base font-extrabold leading-tight text-white">
-              {stats.averageRating ? stats.averageRating.toFixed(1) : "—"}
-            </p>
-            <p className="text-[11px] font-medium text-white/70">Average rating</p>
-          </div>
-        </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex size-9 items-center justify-center rounded-xl border border-orange-500/20 bg-orange-500/10 text-orange-400">
-            <Flame className="size-4" />
+          <div className="flex items-center gap-3">
+            <div className="flex size-9 items-center justify-center rounded-xl border border-orange-500/20 bg-orange-500/10 text-orange-400">
+              <Flame className="size-4" />
+            </div>
+            <div>
+              <p className="text-base font-extrabold leading-tight text-white">1</p>
+              <p className="text-[11px] font-medium text-white/70">Day streak</p>
+            </div>
           </div>
-          <div>
-            <p className="text-base font-extrabold leading-tight text-white">1</p>
-            <p className="text-[11px] font-medium text-white/70">Day streak</p>
-          </div>
-        </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex size-9 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10 text-blue-400">
-            <Shield className="size-4" />
-          </div>
-          <div>
-            <p className="text-base font-extrabold leading-tight text-white">{topGenre}</p>
-            <p className="text-[11px] font-medium text-white/70">Top genre</p>
+          <div className="flex items-center gap-3">
+            <div className="flex size-9 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10 text-blue-400">
+              <Shield className="size-4" />
+            </div>
+            <div>
+              <p className="text-base font-extrabold leading-tight text-white">{topGenre}</p>
+              <p className="text-[11px] font-medium text-white/70">Top genre</p>
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="relative mt-8 grid grid-cols-2 gap-3 border-t border-purple-500/20 pt-6 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="flex items-center gap-3">
+            <div className="flex size-9 items-center justify-center rounded-xl border border-purple-500/20 bg-purple-500/10 text-purple-400">
+              <Film className="size-4" />
+            </div>
+            <div>
+              <p className="text-base font-extrabold leading-tight text-white">10,000+</p>
+              <p className="text-[11px] font-medium text-white/70">Movies &amp; Anime</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="flex size-9 items-center justify-center rounded-xl border border-orange-500/20 bg-orange-500/10 text-orange-400">
+              <Star className="size-4" />
+            </div>
+            <div>
+              <p className="text-base font-extrabold leading-tight text-white">Dragon Ball</p>
+              <p className="text-[11px] font-medium text-white/70">7-Star Ratings</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="flex size-9 items-center justify-center rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-400">
+              <Sparkles className="size-4" />
+            </div>
+            <div>
+              <p className="text-base font-extrabold leading-tight text-white">AI Powered</p>
+              <p className="text-[11px] font-medium text-white/70">Taste Match</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="flex size-9 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10 text-blue-400">
+              <MessageSquare className="size-4" />
+            </div>
+            <div>
+              <p className="text-base font-extrabold leading-tight text-white">Community</p>
+              <p className="text-[11px] font-medium text-white/70">Discussions</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="flex size-9 items-center justify-center rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400">
+              <Trophy className="size-4" />
+            </div>
+            <div>
+              <p className="text-base font-extrabold leading-tight text-white">Tracker</p>
+              <p className="text-[11px] font-medium text-white/70">Custom Watchlists</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

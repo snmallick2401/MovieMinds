@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { NavigationLinks } from "@/components/navigation/navigation-links";
 import { SignOutButton } from "@/components/layout/sign-out-button";
 import { Avatar } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { SantoryuHamburger } from "@/components/layout/SantoryuHamburger";
 import Link from "next/link";
 import type { Profile } from "@/types/profile";
@@ -51,20 +52,35 @@ export function MobileMenu({ profile }: { profile?: Profile | null }) {
             </div>
 
             <div className="p-4 border-t border-border mt-auto space-y-2 bg-card">
-              {profile && (
-                <div className="flex items-center gap-3 mb-3">
-                  <Avatar name={profile.displayName || profile.username || "User"} src={profile.avatarUrl} />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{profile.displayName || profile.username}</p>
-                    {profile.username && (
-                      <p className="truncate text-xs text-muted-foreground">
-                        @{profile.username}
-                      </p>
-                    )}
+              {profile ? (
+                <>
+                  <div className="flex items-center gap-3 mb-3">
+                    <Avatar name={profile.displayName || profile.username || "User"} src={profile.avatarUrl} />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{profile.displayName || profile.username}</p>
+                      {profile.username && (
+                        <p className="truncate text-xs text-muted-foreground">
+                          @{profile.username}
+                        </p>
+                      )}
+                    </div>
                   </div>
+                  <SignOutButton />
+                </>
+              ) : (
+                <div className="space-y-2">
+                  <Link href="/login" className="block w-full" onClick={() => setIsOpen(false)}>
+                    <Button variant="default" className="w-full">
+                      Sign In
+                    </Button>
+                  </Link>
+                  <Link href="/signup" className="block w-full" onClick={() => setIsOpen(false)}>
+                    <Button variant="outline" className="w-full">
+                      Create Account
+                    </Button>
+                  </Link>
                 </div>
               )}
-              <SignOutButton />
             </div>
           </div>
         </div>

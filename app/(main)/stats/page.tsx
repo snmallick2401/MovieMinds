@@ -1,11 +1,11 @@
 import { BarChart3, Clock3, Star, Trophy } from "lucide-react";
 import { StatsCharts } from "@/components/stats/stats-charts";
-import { requireUser } from "@/lib/auth/server";
+import { requireUserOrRedirect } from "@/lib/auth/server";
 import { getUserStats } from "@/lib/library/queries";
 import { recalculateUserStats } from "@/lib/media/aggregates";
 
 export default async function StatsPage() {
-  const user = await requireUser();
+  const user = await requireUserOrRedirect("/login?next=/stats");
   const [stats, ratingStats] = await Promise.all([
     getUserStats(user.id),
     recalculateUserStats(user.id)

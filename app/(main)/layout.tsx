@@ -11,7 +11,6 @@ export default async function MainLayout({ children }: { children: ReactNode }) 
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-  const profile = await getOrCreateProfile(user);
+  const profile = user ? await getOrCreateProfile(user).catch(() => null) : null;
   return <AppShell profile={profile}>{children}</AppShell>;
 }

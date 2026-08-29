@@ -2,12 +2,14 @@
 
 import { X } from "lucide-react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { DragonBallRating } from "@/components/ratings/dragon-ball-rating";
 import { DragonBall } from "@/components/icons/dragon-ball";
 import { Button } from "@/components/ui/button";
 import type { MediaRatingSummary } from "@/types/rating";
 
 export function RatingDialog({ mediaId, summary, onSaved }: { mediaId: string; summary: MediaRatingSummary; onSaved: (summary: MediaRatingSummary) => void }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState<number | null>(summary.currentUserRating?.rating ?? null);
   const [busy, setBusy] = useState(false);
@@ -23,6 +25,11 @@ export function RatingDialog({ mediaId, summary, onSaved }: { mediaId: string; s
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(summary.currentUserRating ? { rating: value } : { mediaId, rating: value }),
     });
+    if (response.status === 401) {
+      setBusy(false);
+      router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+      return;
+    }
     const payload = await response.json() as { rating?: { id: string; rating: number }; summary?: Omit<MediaRatingSummary, "distribution" | "currentUserRating">; error?: string };
     setBusy(false);
     if (!response.ok || !payload.rating || !payload.summary) {

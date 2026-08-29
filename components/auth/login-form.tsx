@@ -4,7 +4,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Chrome } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { loginSchema, type LoginInput } from "@/lib/validations/auth";
 import { Button } from "@/components/ui/button";
@@ -30,22 +29,6 @@ export function LoginForm() {
       router.refresh();
     } catch (err) {
       console.error("Submit caught error", err);
-      setError(
-        "Supabase is not configured. Add your real project URL and anon key to .env.local, then restart npm run dev.",
-      );
-    }
-  }
-  async function google() {
-    setError(null);
-    try {
-      const { error: authError } = await createClient().auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(destination)}`,
-        },
-      });
-      if (authError) setError(authError.message);
-    } catch {
       setError(
         "Supabase is not configured. Add your real project URL and anon key to .env.local, then restart npm run dev.",
       );
@@ -83,13 +66,6 @@ export function LoginForm() {
       )}
       <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
         {form.formState.isSubmitting ? "Signing in…" : "Sign in"}
-      </Button>
-      <div className="relative py-1 text-center text-xs text-muted-foreground before:absolute before:left-0 before:top-1/2 before:h-px before:w-full before:bg-border">
-        <span className="relative bg-background px-3">OR</span>
-      </div>
-      <Button type="button" variant="outline" className="w-full" onClick={google}>
-        <Chrome className="size-4" />
-        Continue with Google
       </Button>
       <p className="pt-2 text-center text-sm text-muted-foreground">
         New to MovieMinds?{" "}

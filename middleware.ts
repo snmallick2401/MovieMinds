@@ -1,7 +1,7 @@
 import { createServerClient, type SetAllCookies } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const protectedPrefixes = ["/", "/explore", "/library", "/community", "/profile"];
+const protectedPrefixes = ["/library", "/profile", "/notifications", "/stats"];
 const authPages = ["/login", "/signup"];
 
 export async function middleware(request: NextRequest) {
@@ -26,9 +26,9 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
   const { pathname, search } = request.nextUrl;
-  const isProtected = protectedPrefixes.some((prefix) =>
-    prefix === "/" ? pathname === "/" : pathname.startsWith(prefix),
-  );
+  const isProtected =
+    protectedPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)) ||
+    pathname.endsWith("/community/new");
 
   // Advanced Logging Middleware
   const startTime = Date.now();

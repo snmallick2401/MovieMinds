@@ -14,7 +14,7 @@ export function AppShell({
   profile,
   children,
 }: {
-  profile: Profile;
+  profile: Profile | null;
   children: ReactNode;
 }) {
   return (
@@ -31,16 +31,33 @@ export function AppShell({
         </Link>
         <NavigationLinks />
         <div className="mt-auto space-y-2 border-t border-border pt-4">
-          <div className="flex items-center gap-3 px-3 py-2">
-            <Avatar name={profile.displayName} src={profile.avatarUrl} />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium">{profile.displayName}</p>
-              <p className="truncate text-xs text-muted-foreground">
-                @{profile.username}
-              </p>
+          {profile ? (
+            <>
+              <div className="flex items-center gap-3 px-3 py-2">
+                <Avatar name={profile.displayName} src={profile.avatarUrl} />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{profile.displayName}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    @{profile.username}
+                  </p>
+                </div>
+              </div>
+              <SignOutButton />
+            </>
+          ) : (
+            <div className="space-y-2 px-2">
+              <Link href="/login" className="block w-full">
+                <Button variant="default" className="w-full">
+                  Sign In
+                </Button>
+              </Link>
+              <Link href="/signup" className="block w-full">
+                <Button variant="outline" className="w-full">
+                  Create Account
+                </Button>
+              </Link>
             </div>
-          </div>
-          <SignOutButton />
+          )}
         </div>
       </aside>
       <div className="pb-16 md:pb-0 md:pl-64">
@@ -52,9 +69,24 @@ export function AppShell({
             </div>
             <div className="ml-auto flex items-center gap-2">
               <ThemeToggle />
-              <Link href="/profile" aria-label="Open profile" className="transition-opacity hover:opacity-85">
-                <Avatar name={profile.displayName} src={profile.avatarUrl} />
-              </Link>
+              {profile ? (
+                <Link href="/profile" aria-label="Open profile" className="transition-opacity hover:opacity-85">
+                  <Avatar name={profile.displayName} src={profile.avatarUrl} />
+                </Link>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Link href="/login">
+                    <Button variant="ghost" size="sm">
+                      Sign In
+                    </Button>
+                  </Link>
+                  <Link href="/signup">
+                    <Button variant="default" size="sm">
+                      Sign Up
+                    </Button>
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         </header>

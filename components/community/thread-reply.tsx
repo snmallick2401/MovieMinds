@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Script from "next/script";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,6 +9,7 @@ import { replyToThread } from "@/lib/community/actions";
 import { Image as ImageIcon, Send } from "lucide-react";
 
 export function ThreadReply({ threadId }: { threadId: string }) {
+  const router = useRouter();
   const [body, setBody] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -44,7 +46,11 @@ export function ThreadReply({ threadId }: { threadId: string }) {
     try {
       await replyToThread(threadId, body);
       setBody("");
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.message === "UNAUTHORIZED" || err?.message?.includes("UNAUTHORIZED")) {
+        router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+        return;
+      }
       console.error(err);
       alert("Failed to post reply.");
     } finally {

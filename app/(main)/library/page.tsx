@@ -1,11 +1,11 @@
 import { LibraryDashboard } from "@/components/library/library-dashboard";
-import { requireUser } from "@/lib/auth/server";
+import { requireUserOrRedirect } from "@/lib/auth/server";
 import { getLibraryDashboard } from "@/lib/library/queries";
 import { recalculateUserStats } from "@/lib/media/aggregates";
 import { RatingWidgets } from "@/components/ratings/rating-widgets";
 
 export default async function LibraryPage() {
-  const user = await requireUser();
+  const user = await requireUserOrRedirect("/login?next=/library");
   const [dashboard, ratingStats] = await Promise.all([
     getLibraryDashboard(user.id),
     recalculateUserStats(user.id)

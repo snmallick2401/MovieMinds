@@ -50,6 +50,14 @@ export function ReviewList({
             Write a review
           </Button>
         )}
+        {!currentUserId && (
+          <Link href={`/login?next=/media/${mediaId}/reviews`}>
+            <Button variant="outline" className="gap-2">
+              <MessageSquarePlus className="size-4" />
+              Sign in to write a review
+            </Button>
+          </Link>
+        )}
       </div>
       {currentUserId && (editing || userReview) && (
         <div className="mt-6">
