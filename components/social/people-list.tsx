@@ -22,8 +22,25 @@ export async function PeopleList({ category, currentUserId }: { category: "simil
     });
     usersData = users.map(u => ({ user: u }));
   } else if (category === "similar" && currentUserId) {
+    const currentUser = await prisma.user.findUnique({
+      where: { id: currentUserId },
+      select: { libraryPublic: true },
+    });
+
+    if (!currentUser?.libraryPublic) {
+      return (
+        <p className="text-muted-foreground bg-card border border-border/50 rounded-xl p-8 text-center">
+          Your library is set to private. Make your library public in profile settings to discover users with similar taste.
+        </p>
+      );
+    }
+
     const recentUsers = await prisma.user.findMany({
-      where: { id: { not: currentUserId }, library: { some: { status: "COMPLETED" } } },
+      where: {
+        id: { not: currentUserId },
+        libraryPublic: true,
+        library: { some: { status: "COMPLETED" } },
+      },
       include: { _count: { select: { reviews: true, library: true } } },
       orderBy: { updatedAt: "desc" },
       take: 12,

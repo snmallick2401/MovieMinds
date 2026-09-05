@@ -41,6 +41,8 @@ export async function PUT(request: Request) {
     });
     
     revalidateTag("user-profile");
+    revalidateTag("taste-match");
+    revalidateTag(`taste-match-${user.id}`);
     return NextResponse.json({ profile: updated });
   } catch (error: unknown) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {

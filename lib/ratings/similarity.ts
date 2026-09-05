@@ -3,7 +3,11 @@ import { prisma } from "@/lib/prisma";
 export async function calculateTasteMatch(userId: string, mediaId: string): Promise<number | null> {
   // 1. Get all users who liked this movie (rating >= 3.5 or library favorite/completed)
   const usersWhoLikedThis = await prisma.userRating.findMany({
-    where: { mediaId, rating: { gte: 3.5 } },
+    where: {
+      mediaId,
+      rating: { gte: 3.5 },
+      user: { showRatings: true, libraryPublic: true },
+    },
     select: { userId: true },
     take: 50,
   });
@@ -27,7 +31,8 @@ export async function calculateTasteMatch(userId: string, mediaId: string): Prom
     where: { 
       userId: { in: otherUserIds },
       mediaId: { in: Array.from(currentUserLikedMediaIds) },
-      rating: { gte: 3.5 }
+      rating: { gte: 3.5 },
+      user: { showRatings: true, libraryPublic: true },
     },
     select: { userId: true, mediaId: true }
   });

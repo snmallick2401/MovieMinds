@@ -29,6 +29,8 @@ export async function PATCH(request: Request) {
       },
     });
     revalidateTag("user-profile");
+    revalidateTag("taste-match");
+    revalidateTag(`taste-match-${user.id}`);
     return NextResponse.json({ profile });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")
