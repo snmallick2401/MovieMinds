@@ -145,7 +145,14 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
         ))}
       </div>
 
-      <ThreadReply threadId={thread.id} />
+      {thread.locked ? (
+        <div className="mt-8 rounded-xl border border-border bg-muted/30 p-6 text-center text-muted-foreground">
+          <p className="font-semibold text-foreground">This thread is locked</p>
+          <p className="mt-1 text-sm">New replies can no longer be posted to this thread.</p>
+        </div>
+      ) : (
+        <ThreadReply threadId={thread.id} />
+      )}
     </div>
   );
 }

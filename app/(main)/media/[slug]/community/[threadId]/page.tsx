@@ -46,6 +46,7 @@ export default async function ThreadPage({
           <div>
             <div className="flex items-center gap-2 mb-2">
               {thread.pinned && <span className="rounded bg-primary/20 px-2 py-0.5 text-xs font-semibold text-primary">Pinned</span>}
+              {thread.locked && <span className="rounded bg-amber-500/20 px-2 py-0.5 text-xs font-semibold text-amber-500">Locked</span>}
               {thread.spoiler && <span className="rounded bg-destructive/20 px-2 py-0.5 text-xs font-semibold text-destructive">Spoiler</span>}
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
@@ -100,7 +101,12 @@ export default async function ThreadPage({
       </div>
 
       {/* Composer */}
-      {user ? (
+      {thread.locked ? (
+        <div className="mt-12 rounded-xl border border-border bg-muted/30 p-6 text-center text-muted-foreground">
+          <p className="font-semibold text-foreground">This thread is locked</p>
+          <p className="mt-1 text-sm">New replies can no longer be posted to this thread.</p>
+        </div>
+      ) : user ? (
         <div className="mt-12">
           <h3 className="text-lg font-bold mb-4">Post a Reply</h3>
           <ThreadComposer threadId={thread.id} userId={user.id} />

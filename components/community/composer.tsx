@@ -1,24 +1,31 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Image as ImageIcon, Send, Loader2, Bold, Italic, Link as LinkIcon, AlertTriangle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Image as ImageIcon, Send, Loader2, Bold, Italic, Link as LinkIcon, AlertTriangle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+const MAX_REPLY_LENGTH = 10000;
+const MIN_REPLY_LENGTH = 2;
+
 export function ThreadComposer({ threadId, userId }: { threadId: string; userId: string }) {
+  const router = useRouter();
   const [content, setContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const insertText = (before: string, after: string = "") => {
-    // In a real implementation, this would grab textarea selection start/end and insert between them
     setContent(prev => prev + before + after);
+    setErrorMessage(null);
   };
 
   const handleImageUpload = async (file: File) => {
     if (!file.type.startsWith("image/")) return;
     
     setIsUploading(true);
+    setErrorMessage(null);
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -27,6 +34,11 @@ export function ThreadComposer({ threadId, userId }: { threadId: string; userId:
         method: "POST",
         body: formData,
       });
+
+      if (res.status === 401) {
+        router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+        return;
+      }
       
       if (!res.ok) throw new Error("Upload failed");
       const data = await res.json();
@@ -35,7 +47,7 @@ export function ThreadComposer({ threadId, userId }: { threadId: string; userId:
       setContent(prev => prev + `\n[gallery:${data.imageId}]\n`);
     } catch (err) {
       console.error(err);
-      alert("Failed to upload image. Please try again.");
+      setErrorMessage("Failed to upload image. Please try again.");
     } finally {
       setIsUploading(false);
     }
@@ -56,26 +68,48 @@ export function ThreadComposer({ threadId, userId }: { threadId: string; userId:
   };
 
   const submitReply = async () => {
-    if (!content.trim()) return;
+    const trimmed = content.trim();
+    if (trimmed.length < MIN_REPLY_LENGTH) {
+      setErrorMessage(`Reply must be at least ${MIN_REPLY_LENGTH} characters.`);
+      return;
+    }
+    if (content.length > MAX_REPLY_LENGTH) {
+      setErrorMessage(`Reply cannot exceed ${MAX_REPLY_LENGTH.toLocaleString()} characters.`);
+      return;
+    }
+
     setIsSubmitting(true);
+    setErrorMessage(null);
     try {
       const res = await fetch(`/api/discussions/${threadId}/reply`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ body: content }),
       });
-      
-      if (!res.ok) throw new Error("Failed to post reply");
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+          return;
+        }
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Failed to post reply");
+      }
       
       setContent("");
       window.location.reload(); // Quick refresh to show new post
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Something went wrong posting your reply.");
+      setErrorMessage(err.message || "Something went wrong posting your reply.");
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const trimmedLength = content.trim().length;
+  const isTooShort = trimmedLength > 0 && trimmedLength < MIN_REPLY_LENGTH;
+  const isTooLong = content.length > MAX_REPLY_LENGTH;
+  const isSubmitDisabled = isSubmitting || isUploading || trimmedLength < MIN_REPLY_LENGTH || isTooLong;
 
   return (
     <div 
@@ -118,23 +152,49 @@ export function ThreadComposer({ threadId, userId }: { threadId: string; userId:
         />
       </div>
 
+      {/* Error Message Banner */}
+      {errorMessage && (
+        <div className="flex items-center gap-2 bg-destructive/10 border-b border-destructive/20 text-destructive text-sm px-4 py-2">
+          <AlertCircle className="size-4 shrink-0" />
+          <span>{errorMessage}</span>
+        </div>
+      )}
+
       {/* Editor Area */}
       <textarea
         value={content}
-        onChange={(e) => setContent(e.target.value)}
+        onChange={(e) => {
+          setContent(e.target.value);
+          if (errorMessage) setErrorMessage(null);
+        }}
         onPaste={onPaste}
+        maxLength={MAX_REPLY_LENGTH}
         placeholder="Write your reply here... (Supports Markdown, paste/drag images to upload)"
         className="w-full min-h-[150px] resize-y bg-transparent p-4 text-sm sm:text-base outline-none placeholder:text-muted-foreground"
       />
 
       {/* Footer */}
-      <div className="flex items-center justify-between border-t border-border/50 bg-muted/10 p-3">
-        <p className="text-xs text-muted-foreground hidden sm:block">
-          Posts are formatted with Markdown. Drag and drop images to upload.
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/50 bg-muted/10 p-3">
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <span className="hidden sm:inline">
+            Posts are formatted with Markdown. Drag and drop images to upload.
+          </span>
+          <span className={`${
+            content.length > MAX_REPLY_LENGTH * 0.95
+              ? content.length >= MAX_REPLY_LENGTH
+                ? "text-destructive font-semibold"
+                : "text-amber-500 font-medium"
+              : "text-muted-foreground"
+          }`}>
+            {content.length.toLocaleString()} / {MAX_REPLY_LENGTH.toLocaleString()} characters
+          </span>
+          {isTooShort && (
+            <span className="text-destructive">Minimum {MIN_REPLY_LENGTH} characters required</span>
+          )}
+        </div>
         <Button 
           onClick={submitReply}
-          disabled={isSubmitting || !content.trim()} 
+          disabled={isSubmitDisabled} 
           className="gap-2 ml-auto"
         >
           {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}

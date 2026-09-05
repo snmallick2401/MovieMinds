@@ -5,19 +5,24 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { replyToThread } from "@/lib/community/actions";
-import { Image as ImageIcon, Send, Loader2 } from "lucide-react";
+import { Image as ImageIcon, Send, Loader2, AlertCircle } from "lucide-react";
+
+const MAX_REPLY_LENGTH = 10000;
+const MIN_REPLY_LENGTH = 2;
 
 export function ThreadReply({ threadId }: { threadId: string }) {
   const router = useRouter();
   const [body, setBody] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handleQuote = (e: any) => {
       const { quoteText } = e.detail;
       setBody((prev) => prev + "\n" + quoteText);
+      setErrorMessage(null);
     };
 
     window.addEventListener("quotePost", handleQuote);
@@ -31,11 +36,12 @@ export function ThreadReply({ threadId }: { threadId: string }) {
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      alert("Please select a valid image file.");
+      setErrorMessage("Please select a valid image file.");
       return;
     }
 
     setIsUploading(true);
+    setErrorMessage(null);
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -59,7 +65,7 @@ export function ThreadReply({ threadId }: { threadId: string }) {
       }
     } catch (err) {
       console.error(err);
-      alert("Failed to upload image. Please try again.");
+      setErrorMessage("Failed to upload image. Please try again.");
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
@@ -69,8 +75,18 @@ export function ThreadReply({ threadId }: { threadId: string }) {
   };
 
   const handleSubmit = async () => {
-    if (!body.trim()) return;
+    const trimmed = body.trim();
+    if (trimmed.length < MIN_REPLY_LENGTH) {
+      setErrorMessage(`Reply must be at least ${MIN_REPLY_LENGTH} characters.`);
+      return;
+    }
+    if (body.length > MAX_REPLY_LENGTH) {
+      setErrorMessage(`Reply cannot exceed ${MAX_REPLY_LENGTH.toLocaleString()} characters.`);
+      return;
+    }
+
     setIsSubmitting(true);
+    setErrorMessage(null);
     try {
       await replyToThread(threadId, body);
       setBody("");
@@ -80,15 +96,27 @@ export function ThreadReply({ threadId }: { threadId: string }) {
         return;
       }
       console.error(err);
-      alert("Failed to post reply.");
+      setErrorMessage(err?.message || "Failed to post reply.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const trimmedLength = body.trim().length;
+  const isTooShort = trimmedLength > 0 && trimmedLength < MIN_REPLY_LENGTH;
+  const isTooLong = body.length > MAX_REPLY_LENGTH;
+  const isSubmitDisabled = isSubmitting || isUploading || trimmedLength < MIN_REPLY_LENGTH || isTooLong;
+
   return (
     <div id="reply-box" className="mt-8 rounded-xl border border-border bg-card p-4">
       <h3 className="text-lg font-bold mb-4">Post a Reply</h3>
+
+      {errorMessage && (
+        <div className="flex items-center gap-2 mb-3 bg-destructive/10 border border-destructive/20 text-destructive text-sm px-3 py-2 rounded-md">
+          <AlertCircle className="size-4 shrink-0" />
+          <span>{errorMessage}</span>
+        </div>
+      )}
 
       <div className="flex gap-2 mb-2 p-2 bg-muted/50 rounded-t-md border border-b-0 border-border">
         <input
@@ -117,13 +145,32 @@ export function ThreadReply({ threadId }: { threadId: string }) {
 
       <Textarea
         value={body}
-        onChange={(e) => setBody(e.target.value)}
+        onChange={(e) => {
+          setBody(e.target.value);
+          if (errorMessage) setErrorMessage(null);
+        }}
+        maxLength={MAX_REPLY_LENGTH}
         placeholder="Write your reply here..."
         className="min-h-[150px] rounded-t-none focus-visible:ring-0 border-t-0 bg-background resize-y"
       />
 
-      <div className="mt-4 flex justify-end">
-        <Button onClick={handleSubmit} disabled={isSubmitting || !body.trim()}>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3 text-xs">
+          <span className={`${
+            body.length > MAX_REPLY_LENGTH * 0.95
+              ? body.length >= MAX_REPLY_LENGTH
+                ? "text-destructive font-semibold"
+                : "text-amber-500 font-medium"
+              : "text-muted-foreground"
+          }`}>
+            {body.length.toLocaleString()} / {MAX_REPLY_LENGTH.toLocaleString()} characters
+          </span>
+          {isTooShort && (
+            <span className="text-destructive">Minimum {MIN_REPLY_LENGTH} characters required</span>
+          )}
+        </div>
+
+        <Button onClick={handleSubmit} disabled={isSubmitDisabled}>
           <Send className="w-4 h-4 mr-2" />
           {isSubmitting ? "Posting..." : "Post reply"}
         </Button>
