@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createClient } from "@/lib/supabase/client";
-import { loginSchema, type LoginInput } from "@/lib/validations/auth";
+import { loginSchema, getSafeRedirectUrl, type LoginInput } from "@/lib/validations/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/auth/password-input";
@@ -15,7 +15,7 @@ export function LoginForm() {
   const params = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const form = useForm<LoginInput>({ resolver: zodResolver(loginSchema) });
-  const destination = params.get("next")?.startsWith("/") ? params.get("next")! : "/";
+  const destination = getSafeRedirectUrl(params.get("next"), "/");
   async function submit(values: LoginInput) {
     console.log("Submit started");
     setError(null);
