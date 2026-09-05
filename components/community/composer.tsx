@@ -119,10 +119,10 @@ export function ThreadComposer({ threadId, userId }: { threadId: string; userId:
     >
       {/* Toolbar */}
       <div className="flex items-center gap-1 border-b border-border/50 bg-muted/20 p-2">
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => insertText("**", "**")} title="Bold">
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => insertText("[b]", "[/b]")} title="Bold">
           <Bold className="size-4" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => insertText("*", "*")} title="Italic">
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => insertText("[i]", "[/i]")} title="Italic">
           <Italic className="size-4" />
         </Button>
         <div className="w-px h-4 bg-border mx-1" />
