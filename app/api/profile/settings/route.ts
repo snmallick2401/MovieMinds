@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
-import { requireUser } from "@/lib/auth/server";
+import { requireUser, isUnauthorized } from "@/lib/auth/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
@@ -45,7 +45,7 @@ export async function PUT(request: Request) {
     revalidateTag(`taste-match-${user.id}`);
     return NextResponse.json({ profile: updated });
   } catch (error: unknown) {
-    if (error instanceof Error && error.message === "UNAUTHORIZED") {
+    if (isUnauthorized(error)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     return NextResponse.json({ error: "Could not update profile settings." }, { status: 500 });

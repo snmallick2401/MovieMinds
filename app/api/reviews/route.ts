@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth/server";
+import { requireUser, isUnauthorized } from "@/lib/auth/server";
 import { prisma } from "@/lib/prisma";
 import { getMediaReviews } from "@/lib/reviews/queries";
 import { reviewSchema } from "@/lib/validations/library";
@@ -33,14 +33,9 @@ export async function POST(request: Request) {
     const reviews = await getMediaReviews(parsed.data.mediaId, user.id);
     return NextResponse.json({ review: reviews.userReview }, { status: 201 });
   } catch (error) {
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error && error.message === "UNAUTHORIZED"
-            ? "Unauthorized"
-            : "Could not save review.",
-      },
-      { status: error instanceof Error && error.message === "UNAUTHORIZED" ? 401 : 500 },
-    );
+    if (isUnauthorized(error)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    return NextResponse.json({ error: "Could not save review." }, { status: 500 });
   }
 }

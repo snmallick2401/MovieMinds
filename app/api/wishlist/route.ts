@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth/server";
+import { requireUser, isUnauthorized } from "@/lib/auth/server";
 import { mediaForLibrary, serializeWishlistEntry } from "@/lib/library/serializers";
 import { prisma } from "@/lib/prisma";
 import { wishlistCreateSchema } from "@/lib/validations/library";
@@ -14,8 +14,11 @@ export async function GET() {
       orderBy: [{ position: "asc" }, { createdAt: "desc" }],
     });
     return NextResponse.json({ items: items.map(serializeWishlistEntry) });
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  } catch (error) {
+    if (isUnauthorized(error)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    return NextResponse.json({ error: "Could not fetch wishlist." }, { status: 500 });
   }
 }
 
@@ -66,7 +69,10 @@ export async function POST(request: Request) {
     await logActivity({ userId: user.id, mediaId: targetMediaId, type: "WISHLISTED" });
 
     return NextResponse.json({ item: serializeWishlistEntry(item) }, { status: 201 });
-  } catch {
+  } catch (error) {
+    if (isUnauthorized(error)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json({ error: "Could not update wishlist." }, { status: 500 });
   }
 }

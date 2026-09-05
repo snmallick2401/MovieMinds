@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth/server";
+import { requireUser, isUnauthorized } from "@/lib/auth/server";
 import { prisma } from "@/lib/prisma";
 import { getMediaReviews } from "@/lib/reviews/queries";
 import { reviewUpdateSchema } from "@/lib/validations/library";
@@ -33,7 +33,10 @@ export async function PUT(
     });
     const reviews = await getMediaReviews(updated.mediaId, user.id);
     return NextResponse.json({ review: reviews.userReview });
-  } catch {
+  } catch (error) {
+    if (isUnauthorized(error)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json({ error: "Could not update review." }, { status: 500 });
   }
 }
@@ -55,7 +58,10 @@ export async function DELETE(
     await prisma.review.delete({ where: { id } });
     await removeActivity(user.id, review.mediaId, "REVIEWED");
     return new NextResponse(null, { status: 204 });
-  } catch {
+  } catch (error) {
+    if (isUnauthorized(error)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json({ error: "Could not remove review." }, { status: 500 });
   }
 }

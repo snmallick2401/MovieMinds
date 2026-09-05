@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth/server";
+import { requireUser, isUnauthorized } from "@/lib/auth/server";
 import { mediaForLibrary, serializeWishlistEntry } from "@/lib/library/serializers";
 import { prisma } from "@/lib/prisma";
 import { wishlistUpdateSchema } from "@/lib/validations/library";
@@ -28,7 +28,10 @@ export async function PATCH(
       include: { media: { include: mediaForLibrary } },
     });
     return NextResponse.json({ item: serializeWishlistEntry(updated) });
-  } catch {
+  } catch (error) {
+    if (isUnauthorized(error)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json(
       { error: "Could not update wishlist item." },
       { status: 500 },
@@ -49,7 +52,10 @@ export async function DELETE(
     await removeActivity(user.id, wishlist.mediaId, "WISHLISTED");
 
     return new NextResponse(null, { status: 204 });
-  } catch {
+  } catch (error) {
+    if (isUnauthorized(error)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json(
       { error: "Could not remove from wishlist." },
       { status: 500 },

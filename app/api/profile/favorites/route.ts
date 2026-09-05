@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth/server";
+import { requireUser, isUnauthorized } from "@/lib/auth/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { refreshMedia } from "@/lib/media/sync";
@@ -65,7 +65,7 @@ export async function PUT(request: Request) {
     
     return NextResponse.json({ success: true, mediaIds: resolvedMediaIds });
   } catch (error: unknown) {
-    if (error instanceof Error && error.message === "UNAUTHORIZED") {
+    if (isUnauthorized(error)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     console.error("Favorites sync error:", error);

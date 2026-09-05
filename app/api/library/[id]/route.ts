@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth/server";
+import { requireUser, isUnauthorized } from "@/lib/auth/server";
 import { completedLibraryData } from "@/lib/library/helpers";
 import { mediaForLibrary, serializeLibraryEntry } from "@/lib/library/serializers";
 import { prisma } from "@/lib/prisma";
@@ -60,14 +60,12 @@ export async function PATCH(
 
     return NextResponse.json({ item: serializeLibraryEntry(entry) });
   } catch (error) {
+    if (isUnauthorized(error)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error && error.message === "UNAUTHORIZED"
-            ? "Unauthorized"
-            : "Could not update library entry.",
-      },
-      { status: error instanceof Error && error.message === "UNAUTHORIZED" ? 401 : 500 },
+      { error: "Could not update library entry." },
+      { status: 500 },
     );
   }
 }
@@ -87,14 +85,12 @@ export async function DELETE(
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {
+    if (isUnauthorized(error)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error && error.message === "UNAUTHORIZED"
-            ? "Unauthorized"
-            : "Could not remove library entry.",
-      },
-      { status: error instanceof Error && error.message === "UNAUTHORIZED" ? 401 : 500 },
+      { error: "Could not remove library entry." },
+      { status: 500 },
     );
   }
 }

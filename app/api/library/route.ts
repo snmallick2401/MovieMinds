@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requireUser } from "@/lib/auth/server";
+import { requireUser, isUnauthorized } from "@/lib/auth/server";
 import { completedLibraryData } from "@/lib/library/helpers";
 import { mediaForLibrary, serializeLibraryEntry } from "@/lib/library/serializers";
 import { prisma } from "@/lib/prisma";
@@ -26,10 +26,10 @@ export async function GET(request: NextRequest) {
     });
     return NextResponse.json({ items: entries.map(serializeLibraryEntry) });
   } catch (error) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: error instanceof Error && error.message === "UNAUTHORIZED" ? 401 : 500 },
-    );
+    if (isUnauthorized(error)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    return NextResponse.json({ error: "Could not fetch library." }, { status: 500 });
   }
 }
 
@@ -85,14 +85,12 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ item: serializeLibraryEntry(entry) }, { status: 201 });
   } catch (error) {
+    if (isUnauthorized(error)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error && error.message === "UNAUTHORIZED"
-            ? "Unauthorized"
-            : "Could not update your library.",
-      },
-      { status: error instanceof Error && error.message === "UNAUTHORIZED" ? 401 : 500 },
+      { error: "Could not update your library." },
+      { status: 500 },
     );
   }
 }
