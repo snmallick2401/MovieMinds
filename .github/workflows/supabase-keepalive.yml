@@ -1,0 +1,28 @@
+name: Keep Supabase & App Alive
+
+on:
+  schedule:
+    # Runs every 12 hours (at 00:00 and 12:00 UTC)
+    - cron: "0 0,12 * * *"
+  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  ping-keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping MovieMinds /api/health
+        run: |
+          echo "Pinging MovieMinds health endpoint..."
+          response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" https://movie-minds-i3xt.vercel.app/api/health)
+          echo "$response"
+          status=$(echo "$response" | grep "HTTP_STATUS" | cut -d':' -f2)
+          if [ "$status" -eq 200 ]; then
+            echo "Health check succeeded (HTTP 200). Database and Supabase are active."
+          else
+            echo "Warning: Health check returned status $status"
+          fi
+
+      - name: Direct Ping to Supabase Auth & REST Health
+        run: |
+          echo "Pinging Supabase Auth Health..."
+          curl -s -o /dev/null -w "Supabase Auth Status: %{http_code}\n" https://iihmjkxfcuibjihbyhyd.supabase.co/auth/v1/health || true
