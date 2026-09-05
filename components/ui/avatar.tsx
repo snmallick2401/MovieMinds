@@ -18,6 +18,7 @@ export function Avatar({ name, src, className }: AvatarProps) {
           fill
           sizes="64px"
           className="object-cover"
+          unoptimized
         />
       ) : (
         initials(name)

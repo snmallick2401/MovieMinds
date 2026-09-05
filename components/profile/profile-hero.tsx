@@ -34,6 +34,7 @@ export function ProfileHero({ profile, stats, social }: ProfileHeroProps) {
             className="object-cover"
             priority
             sizes="100vw"
+            unoptimized
           />
         ) : (
           <div 

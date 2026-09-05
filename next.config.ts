@@ -19,10 +19,18 @@ const nextConfig: NextConfig = {
     contentDispositionType: "attachment",
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     remotePatterns: [
+      { protocol: "https", hostname: "image.tmdb.org" },
+      { protocol: "https", hostname: "**.anilist.co" },
+      { protocol: "https", hostname: "s4.anilist.co" },
       { protocol: "https", hostname: "**.supabase.co" },
       { protocol: "https", hostname: "images.unsplash.com" },
-      // Avatars are user-supplied HTTPS image URLs. Consider an upload allow-list when storage is added.
-      { protocol: "https", hostname: "**" },
+      { protocol: "https", hostname: "picsum.photos" },
+      { protocol: "https", hostname: "avatars.githubusercontent.com" },
+      { protocol: "https", hostname: "lh3.googleusercontent.com" },
+      { protocol: "https", hostname: "**.gravatar.com" },
+      { protocol: "https", hostname: "secure.gravatar.com" },
+      { protocol: "https", hostname: "**.animenewsnetwork.com" },
+      { protocol: "https", hostname: "cdn.animenewsnetwork.com" },
     ],
   },
 };
