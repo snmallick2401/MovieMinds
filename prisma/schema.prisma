@@ -453,10 +453,11 @@ model DiscussionThread {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
-  media    Media?           @relation(fields: [mediaId], references: [id], onDelete: Cascade)
-  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  posts    DiscussionPost[]
-  watchers ThreadWatch[]
+  media     Media?               @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  posts     DiscussionPost[]
+  reactions DiscussionReaction[]
+  watchers  ThreadWatch[]
 
   @@index([mediaId, createdAt(sort: Desc)])
   @@index([mediaId, replyCount(sort: Desc)])
@@ -518,14 +519,19 @@ enum ReactionType {
 model DiscussionReaction {
   id           String       @id @default(cuid())
   userId       String       @db.Uuid
-  postId       String
+  postId       String?
+  threadId     String?
   reactionType ReactionType
   createdAt    DateTime     @default(now())
 
-  user User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  post DiscussionPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user   User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post   DiscussionPost?   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  thread DiscussionThread? @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
   @@unique([userId, postId])
+  @@unique([userId, threadId])
+  @@index([postId])
+  @@index([threadId])
   @@map("discussion_reactions")
 }
 

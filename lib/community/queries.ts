@@ -48,6 +48,7 @@ export async function getThreadDetails(threadId: string, page = 1, limit = 20) {
           createdAt: true,
         },
       },
+      reactions: true,
       posts: {
         orderBy: { createdAt: "asc" },
         skip: (page - 1) * limit,

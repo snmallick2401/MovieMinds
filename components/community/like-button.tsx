@@ -1,19 +1,78 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import styles from "./like-button.module.css";
 import { cn } from "@/lib/utils";
 
 interface LikeButtonProps {
   initialCount?: number;
+  initialLiked?: boolean;
   postId: string;
 }
 
-export function LikeButton({ initialCount = 0, postId }: LikeButtonProps) {
-  const [liked, setLiked] = useState(false);
+export function LikeButton({ initialCount = 0, initialLiked = false, postId }: LikeButtonProps) {
+  const router = useRouter();
+  const [liked, setLiked] = useState(initialLiked);
+  const [count, setCount] = useState(initialCount);
+  const [isPending, setIsPending] = useState(false);
+
+  useEffect(() => {
+    setLiked(initialLiked);
+  }, [initialLiked]);
+
+  useEffect(() => {
+    setCount(initialCount);
+  }, [initialCount]);
+
+  const handleToggleLike = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isPending) return;
+
+    const nextLiked = e.target.checked;
+    const prevLiked = liked;
+    const prevCount = count;
+
+    // Optimistic UI update
+    setLiked(nextLiked);
+    setCount((prev) => (nextLiked ? prev + 1 : Math.max(0, prev - 1)));
+    setIsPending(true);
+
+    try {
+      const res = await fetch(`/api/discussions/posts/${postId}/react`, {
+        method: nextLiked ? "POST" : "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: nextLiked ? JSON.stringify({ type: "LIKE" }) : undefined,
+      });
+
+      if (res.status === 401) {
+        setLiked(prevLiked);
+        setCount(prevCount);
+        router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+        return;
+      }
+
+      if (!res.ok) {
+        throw new Error("Failed to update reaction");
+      }
+
+      const data = await res.json();
+      if (typeof data.reactionCount === "number") {
+        setCount(data.reactionCount);
+      }
+    } catch (err) {
+      console.error("Like toggle failed:", err);
+      // Revert optimistic update
+      setLiked(prevLiked);
+      setCount(prevCount);
+    } finally {
+      setIsPending(false);
+    }
+  };
 
   // Use the ID to generate a unique HTML ID for the checkbox label linking
   const checkboxId = `heart-${postId}`;
+  const unlikedCount = liked ? Math.max(0, count - 1) : count;
+  const likedCount = liked ? count : count + 1;
 
   return (
     <div className={styles.likeButton}>
@@ -22,7 +81,8 @@ export function LikeButton({ initialCount = 0, postId }: LikeButtonProps) {
         id={checkboxId} 
         type="checkbox" 
         checked={liked}
-        onChange={(e) => setLiked(e.target.checked)}
+        disabled={isPending}
+        onChange={handleToggleLike}
       />
       
       <label className={styles.like} htmlFor={checkboxId}>
@@ -33,10 +93,10 @@ export function LikeButton({ initialCount = 0, postId }: LikeButtonProps) {
       </label>
       
       <span className={cn(styles.likeCount, styles.likeCountOne)}>
-        {initialCount}
+        {unlikedCount}
       </span>
       <span className={cn(styles.likeCount, styles.likeCountTwo)}>
-        {initialCount + 1}
+        {likedCount}
       </span>
     </div>
   );

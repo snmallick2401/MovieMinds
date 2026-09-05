@@ -59,6 +59,7 @@ export async function getThreadById(threadId: string) {
     include: {
       user: { select: { id: true, username: true, displayName: true, avatarUrl: true, reputationScore: true } },
       media: { select: { id: true, title: true, posterUrl: true, mediaType: true } },
+      reactions: true,
     }
   });
 }

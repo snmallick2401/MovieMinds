@@ -73,6 +73,7 @@ export default async function ThreadPage({
         {isOriginalPostPage && (
           <PostCard 
             isOriginalPost
+            currentUserReaction={thread.reactions?.find((r: any) => r.userId === user?.id)?.reactionType}
             post={{
               id: thread.id,
               body: thread.body,
@@ -81,6 +82,7 @@ export default async function ThreadPage({
               reactionCount: thread.reactionCount,
               user: thread.user,
               attachments: [], // Thread OP attachments logic can be added later if needed
+              reactions: thread.reactions || [],
             }}
           />
         )}
@@ -88,7 +90,11 @@ export default async function ThreadPage({
         {/* Render Replies */}
         <div className="space-y-4">
           {postsData.items.map(post => (
-            <PostCard key={post.id} post={post} />
+            <PostCard 
+              key={post.id} 
+              post={post} 
+              currentUserReaction={post.reactions?.find((r: any) => r.userId === user?.id)?.reactionType}
+            />
           ))}
         </div>
       </div>

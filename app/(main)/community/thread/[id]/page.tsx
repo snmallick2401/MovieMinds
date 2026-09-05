@@ -7,23 +7,32 @@ import { PostActions } from "@/components/community/post-actions";
 import { formatDistanceToNow, format } from "date-fns";
 import { Search, Share2, Code, BookmarkPlus } from "lucide-react";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function ThreadPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const thread = await getThreadDetails(id);
+  const [thread, supabase] = await Promise.all([
+    getThreadDetails(id),
+    createClient(),
+  ]);
 
   if (!thread) {
     notFound();
   }
 
+  const { data: { user } } = await supabase.auth.getUser();
+  const currentUserId = user?.id;
+
   // Combine thread body (as post #1) and replies
   const posts = [
     {
-      id: "thread-starter",
+      id: thread.id,
       user: thread.user,
       body: thread.body,
       createdAt: thread.createdAt,
       isStarter: true,
+      reactionCount: thread.reactionCount,
+      userLiked: thread.reactions?.some((r) => r.userId === currentUserId && r.reactionType === "LIKE") ?? false,
     },
     ...thread.posts.map((p) => ({
       id: p.id,
@@ -31,6 +40,8 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
       body: p.body,
       createdAt: p.createdAt,
       isStarter: false,
+      reactionCount: p.reactionCount,
+      userLiked: p.reactions?.some((r) => r.userId === currentUserId && r.reactionType === "LIKE") ?? false,
     }))
   ];
 
@@ -122,7 +133,13 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
               </div>
 
               {/* Post Footer */}
-              <PostActions postId={post.id} username={post.user.username} body={post.body} />
+              <PostActions
+                postId={post.id}
+                username={post.user.username}
+                body={post.body}
+                initialCount={post.reactionCount}
+                initialLiked={post.userLiked}
+              />
             </div>
           </div>
         ))}

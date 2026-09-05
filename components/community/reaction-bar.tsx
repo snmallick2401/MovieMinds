@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Smile, ThumbsUp, Heart, Flame, Zap, Laugh, Frown, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +16,7 @@ const REACTIONS = [
 ];
 
 export function ReactionBar({ postId, initialReactions, userReactionType }: { postId: string; initialReactions: any[]; userReactionType?: string }) {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [optimisticReaction, setOptimisticReaction] = useState<string | undefined>(userReactionType);
   const [isPending, setIsPending] = useState(false);
@@ -41,6 +43,11 @@ export function ReactionBar({ postId, initialReactions, userReactionType }: { po
         headers: { "Content-Type": "application/json" },
         body: isRemoving ? undefined : JSON.stringify({ type }),
       });
+      if (res.status === 401) {
+        setOptimisticReaction(previous);
+        router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+        return;
+      }
       if (!res.ok) throw new Error();
     } catch {
       // Revert on error

@@ -4,7 +4,19 @@ import { Button } from "@/components/ui/button";
 import { Quote, Reply, Flag } from "lucide-react";
 import { LikeButton } from "@/components/community/like-button";
 
-export function PostActions({ postId, username, body }: { postId: string, username: string, body: string }) {
+export function PostActions({
+  postId,
+  username,
+  body,
+  initialCount = 0,
+  initialLiked = false,
+}: {
+  postId: string;
+  username: string;
+  body: string;
+  initialCount?: number;
+  initialLiked?: boolean;
+}) {
 
   const handleQuote = () => {
     // Extract text from BBCode basicly or just pass raw BBCode
@@ -32,7 +44,7 @@ export function PostActions({ postId, username, body }: { postId: string, userna
       </div>
       
       <div className="flex items-center gap-2">
-        <LikeButton postId={postId} />
+        <LikeButton postId={postId} initialCount={initialCount} initialLiked={initialLiked} />
         
         <Button onClick={handleQuote} variant="ghost" size="sm" className="h-9 text-xs text-muted-foreground hover:text-foreground">
           <Quote className="w-3.5 h-3.5 mr-1.5" /> Quote
