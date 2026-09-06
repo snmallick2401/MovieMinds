@@ -26,7 +26,7 @@ export async function PeopleList({ category, currentUserId }: { category: "simil
     const users = await prisma.user.findMany({
       where: currentUserId ? { id: { not: currentUserId } } : undefined,
       select: publicUserSelect,
-      orderBy: { reviews: { _count: "desc" } },
+      orderBy: [{ reviews: { _count: "desc" } }, { library: { _count: "desc" } }, { createdAt: "desc" }],
       take: 6,
     });
     usersData = users.map(u => ({ user: u }));

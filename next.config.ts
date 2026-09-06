@@ -4,7 +4,7 @@ const cspHeader = `
   default-src 'self';
   script-src 'self' 'unsafe-inline' 'unsafe-eval';
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-  img-src 'self' data: blob: https://image.tmdb.org https://*.anilist.co https://s4.anilist.co https://*.supabase.co https://images.unsplash.com https://picsum.photos https://avatars.githubusercontent.com https://lh3.googleusercontent.com https://*.gravatar.com https://secure.gravatar.com https://*.animenewsnetwork.com https://cdn.animenewsnetwork.com;
+  img-src 'self' data: blob: https://image.tmdb.org https://*.anilist.co https://s4.anilist.co https://*.supabase.co https://images.unsplash.com https://picsum.photos https://avatars.githubusercontent.com https://lh3.googleusercontent.com https://*.googleusercontent.com https://*.gravatar.com https://secure.gravatar.com https://*.animenewsnetwork.com https://cdn.animenewsnetwork.com https://api.dicebear.com;
   font-src 'self' data: https://fonts.gstatic.com;
   connect-src 'self' https://*.supabase.co wss://*.supabase.co;
   media-src 'self' https: data: blob:;
@@ -97,6 +97,8 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "secure.gravatar.com" },
       { protocol: "https", hostname: "**.animenewsnetwork.com" },
       { protocol: "https", hostname: "cdn.animenewsnetwork.com" },
+      { protocol: "https", hostname: "api.dicebear.com" },
+      { protocol: "https", hostname: "**.googleusercontent.com" },
     ],
   },
 };

@@ -22,12 +22,12 @@ export async function UserCard({ user, currentUserId, match }: UserCardProps) {
   return (
     <div className="flex flex-col justify-between rounded-2xl border border-border/50 bg-card p-6 shadow-sm transition-shadow hover:shadow-md">
       <div>
-        <div className="flex items-start justify-between">
-          <Link href={`/user/${user.username}`} className="flex items-center gap-4">
-            <Avatar src={user.avatarUrl} name={user.displayName} className="size-14 border border-border/50" />
-            <div>
-              <h3 className="font-bold hover:underline line-clamp-1">{user.displayName}</h3>
-              <p className="text-xs text-muted-foreground">@{user.username}</p>
+        <div className="flex items-start justify-between gap-3">
+          <Link href={`/user/${user.username}`} className="flex items-center gap-4 min-w-0 flex-1 group">
+            <Avatar src={user.avatarUrl} name={user.displayName} className="size-14 border border-border/50 shrink-0 transition-transform group-hover:scale-105" />
+            <div className="min-w-0 flex-1">
+              <h3 className="font-bold group-hover:underline truncate">{user.displayName}</h3>
+              <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
               {user._count && (
                 <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                   <span>{user._count.library} watched</span>
@@ -60,7 +60,7 @@ export async function UserCard({ user, currentUserId, match }: UserCardProps) {
       </div>
 
       <div className="mt-6">
-        {currentUserId && currentUserId !== user.id ? (
+        {currentUserId !== user.id ? (
           <FollowButton targetUserId={user.id} initialIsFollowing={isFollowing} />
         ) : (
           <div className="h-9" /> // spacer
