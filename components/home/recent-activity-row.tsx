@@ -38,7 +38,7 @@ export function RecentActivityRow({
             type: types[idx % types.length],
             title: media.title,
             media,
-            rating: 10.0,
+            rating: 7.0,
             timeAgo: times[idx % times.length],
           };
         });

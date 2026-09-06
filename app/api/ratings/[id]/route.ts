@@ -11,7 +11,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const supabase = await createClient(); const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const { rating } = (await request.json()) as { rating: number };
-    if (typeof rating !== "number" || rating < 0 || rating > 10) return NextResponse.json({ error: "Invalid rating." }, { status: 400 });
+    if (typeof rating !== "number" || rating < 0.5 || rating > 7 || (rating * 2) % 1 !== 0) return NextResponse.json({ error: "Invalid rating." }, { status: 400 });
     const result = await prisma.$transaction(async (tx) => {
       const existing = await tx.userRating.findUnique({ where: { id } });
       if (!existing || existing.userId !== user.id) return null;

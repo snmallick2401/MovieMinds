@@ -44,7 +44,7 @@ export default async function HomePage() {
       : Promise.resolve({
           totalWatched: 1,
           hoursWatched: 0,
-          averageRating: 10.0,
+          averageRating: 7.0,
           completionRate: 100,
           favoriteGenres: [{ name: "Drama", count: 1 }],
         }),

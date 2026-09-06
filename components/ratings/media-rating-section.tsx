@@ -8,8 +8,14 @@ import type { MediaRatingSummary } from "@/types/rating";
 export function MediaRatingSection({ mediaId, initialSummary }: { mediaId: string; initialSummary: MediaRatingSummary }) {
   const [summary, setSummary] = useState(initialSummary);
   
-  // Calculate histogram max for scaling bars
-  const maxCount = Math.max(...summary.ratingDistribution.map(d => d.count), 1);
+  // Group 14 distribution intervals into 7 Dragon Ball buckets (0.5+1.0, 1.5+2.0, ..., 6.5+7.0)
+  const starBuckets = Array.from({ length: 7 }, (_, i) => {
+    const star = i + 1;
+    const halfCount = summary.ratingDistribution.find((d) => d.rating === star - 0.5)?.count ?? 0;
+    const fullCount = summary.ratingDistribution.find((d) => d.rating === star)?.count ?? 0;
+    return { star, count: halfCount + fullCount };
+  });
+  const maxCount = Math.max(...starBuckets.map((d) => d.count), 1);
 
   return (
     <section className="grid gap-6 lg:grid-cols-[20rem_minmax(0,1fr)]">
@@ -36,12 +42,10 @@ export function MediaRatingSection({ mediaId, initialSummary }: { mediaId: strin
               </div>
             ) : (
               <div className="flex items-end gap-1 h-24">
-                {Array.from({ length: 10 }, (_, i) => i + 1).map((rating) => {
-                  const data = summary.ratingDistribution.find((d) => d.rating === rating);
-                  const count = data?.count ?? 0;
+                {starBuckets.map(({ star, count }) => {
                   const heightPercent = Math.max((count / maxCount) * 100, 2); // Minimum 2% height for visibility
                   return (
-                    <div key={rating} className="group flex flex-1 flex-col items-center gap-2">
+                    <div key={star} className="group flex flex-1 flex-col items-center gap-2">
                       <div className="relative flex h-full w-full items-end">
                         <div
                           className="relative w-full rounded-t-sm bg-primary/20 transition-colors group-hover:bg-primary"
@@ -54,7 +58,7 @@ export function MediaRatingSection({ mediaId, initialSummary }: { mediaId: strin
                           )}
                         </div>
                       </div>
-                      <span className="text-[10px] font-medium text-muted-foreground">{rating}</span>
+                      <span className="text-[10px] font-medium text-muted-foreground">{star}</span>
                     </div>
                   );
                 })}

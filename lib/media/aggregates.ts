@@ -4,7 +4,7 @@ import type { RatingDistributionItem } from "@/types/rating";
 
 type RatingClient = PrismaClient | Prisma.TransactionClient;
 
-const RATING_BUCKETS = Array.from({ length: 20 }, (_, index) => (index + 1) / 2).reverse();
+const RATING_BUCKETS = Array.from({ length: 14 }, (_, index) => (index + 1) / 2).reverse();
 
 /** Rebuilds only one title's cached member-rating aggregates after a mutation. */
 export async function recalculateMediaRating(mediaId: string, client: RatingClient = prisma) {
@@ -12,7 +12,7 @@ export async function recalculateMediaRating(mediaId: string, client: RatingClie
   const ratingCount = aggregate._count.rating;
   const average = aggregate._avg.rating ? Number(aggregate._avg.rating) : null;
   // Bayesian weighting keeps one enthusiastic rating from dominating discovery ordering.
-  const minimumVotes = 5; const baseline = 7;
+  const minimumVotes = 5; const baseline = 4.9;
   const weighted = average === null ? null : (ratingCount / (ratingCount + minimumVotes)) * average + (minimumVotes / (ratingCount + minimumVotes)) * baseline;
   const popularityScore = weighted === null ? 0 : Number((weighted * Math.log10(ratingCount + 1) * 100).toFixed(2));
   const distribution = await getRatingDistribution(mediaId, client);
@@ -25,7 +25,7 @@ export async function getRatingDistribution(mediaId: string, client: RatingClien
   return RATING_BUCKETS.map((rating) => ({ rating, count: counts.get(rating) ?? 0, percentage: total ? ((counts.get(rating) ?? 0) / total) * 100 : 0 }));
 }
 
-const USER_RATING_BUCKETS = Array.from({ length: 20 }, (_, index) => (index + 1) / 2);
+const USER_RATING_BUCKETS = Array.from({ length: 14 }, (_, index) => (index + 1) / 2);
 
 export async function getUserRatingDistribution(userId: string): Promise<RatingDistributionItem[]> {
   const grouped = await prisma.userRating.groupBy({ by: ["rating"], where: { userId }, _count: { rating: true } });

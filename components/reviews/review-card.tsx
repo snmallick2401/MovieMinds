@@ -66,7 +66,7 @@ export function ReviewCard({
           {review.rating !== null && (
             <span className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-amber-500">
               <Star className="size-3 fill-current" />
-              {review.rating.toFixed(1)} / 10
+              {review.rating.toFixed(1)} / 7
             </span>
           )}
         </div>

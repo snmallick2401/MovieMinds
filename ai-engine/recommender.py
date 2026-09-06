@@ -21,7 +21,7 @@ class MediaItem(BaseModel):
 
 class UserInteraction(BaseModel):
     mediaId: str
-    rating: Optional[float] = None  # 0.5 to 10.0
+    rating: Optional[float] = None  # 0.5 to 7.0
     status: Optional[str] = None  # WATCHING, COMPLETED, PLAN_TO_WATCH, ON_HOLD, DROPPED
     isFavorite: bool = False
 
@@ -160,7 +160,7 @@ class HybridRecommender:
             content_sim = float(content_scores[idx]) if idx < len(content_scores) else 0.0
             
             # Quality score (0.0 to 1.0)
-            avg_rating = (item.averageRating or 70.0) / 100.0  # normalized to 0-1
+            avg_rating = min(1.0, max(0.0, (item.averageRating or 4.9) / 7.0))  # normalized to 0-1
             pop_score = np.log1p(max(0.0, item.popularity or 0.0)) / 10.0
             pop_score = min(1.0, max(0.0, pop_score))
 
@@ -306,8 +306,8 @@ class HybridRecommender:
         if shared_media_ids:
             diffs = [abs(ratings1[m_id] - ratings2[m_id]) for m_id in shared_media_ids]
             avg_diff = sum(diffs) / len(diffs)
-            # 0 diff -> 100%, 5 diff -> 0%
-            rating_score = max(0.0, 100.0 - (avg_diff * 20.0))
+            # 0 diff -> 100%, 3.5 diff -> 0% (scaled to 7-point rating system)
+            rating_score = max(0.0, 100.0 - (avg_diff * (100.0 / 3.5)))
 
         # 2. Compare genre sets
         g1 = set(user1.favoriteGenres)

@@ -106,7 +106,7 @@ export async function calculateTasteMatch(userId1: string, userId2: string): Pro
     let ratingScore = 30;
     if (ratedSharedCount > 0) {
       const avgDiff = ratingDiffSum / ratedSharedCount;
-      ratingScore = Math.max(0, 30 - (avgDiff * 6)); // Deduct points for larger rating differences
+      ratingScore = Math.max(0, 30 - (avgDiff * (30 / 3.5))); // Deduct points for larger rating differences (scaled to 7-point system)
     }
 
     const rawScore = Math.round(libraryScore + genreScore + ratingScore);

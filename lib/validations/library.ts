@@ -33,7 +33,7 @@ export const wishlistUpdateSchema = z.object({
 
 export const ratingSchema = z.object({
   mediaId: z.string().min(1),
-  rating: z.number().min(0.5).max(10).multipleOf(0.5),
+  rating: z.number().min(0.5).max(7).multipleOf(0.5),
 });
 export const reviewSchema = z.object({
   mediaId: z.string().min(1),

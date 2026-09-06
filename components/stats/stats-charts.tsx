@@ -56,7 +56,7 @@ export type RatingStatsData = {
 };
 
 export function StatsCharts({ ratingStats }: { stats?: StatsData; ratingStats: RatingStatsData }) {
-  // Sort distribution ascending from 0.5 up to 10
+  // Sort distribution ascending from 0.5 up to 7
   const sortedDistribution = [...(ratingStats.distribution || [])].sort((a, b) => a.rating - b.rating);
 
   // Format monthly activity with human readable month names
@@ -95,8 +95,8 @@ export function StatsCharts({ ratingStats }: { stats?: StatsData; ratingStats: R
                 tick={{ fill: "hsl(var(--muted-foreground))" }}
               />
               <YAxis
-                domain={[0, 10]}
-                ticks={[0, 2, 4, 6, 8, 10]}
+                domain={[0, 7]}
+                ticks={[0, 1, 2, 3, 4, 5, 6, 7]}
                 fontSize={11}
                 tickLine={false}
                 axisLine={{ stroke: "hsl(var(--border))" }}
@@ -111,7 +111,7 @@ export function StatsCharts({ ratingStats }: { stats?: StatsData; ratingStats: R
                     <div className="rounded-lg border border-border bg-card/95 px-3.5 py-2.5 text-xs shadow-xl backdrop-blur-md">
                       <p className="font-semibold text-foreground">{data.displayMonth || data.month}</p>
                       <p className="mt-1 text-amber-400 font-medium">
-                        Avg Rating: <span className="font-bold text-foreground">{data.average} ★</span>
+                        Avg Rating: <span className="font-bold text-foreground">{data.average}</span> / 7 ★
                       </p>
                       <p className="text-muted-foreground">
                         {data.count} rating{data.count === 1 ? "" : "s"} recorded
@@ -236,8 +236,8 @@ export function StatsCharts({ ratingStats }: { stats?: StatsData; ratingStats: R
               <CartesianGrid horizontal={false} stroke="hsl(var(--border))" strokeOpacity={0.4} strokeDasharray="3 3" />
               <XAxis
                 type="number"
-                domain={[0, 10]}
-                ticks={[0, 2, 4, 6, 8, 10]}
+                domain={[0, 7]}
+                ticks={[0, 1, 2, 3, 4, 5, 6, 7]}
                 fontSize={11}
                 tickLine={false}
                 axisLine={{ stroke: "hsl(var(--border))" }}
@@ -262,7 +262,7 @@ export function StatsCharts({ ratingStats }: { stats?: StatsData; ratingStats: R
                     <div className="rounded-lg border border-border bg-card/95 px-3.5 py-2.5 text-xs shadow-xl backdrop-blur-md">
                       <p className="font-semibold text-foreground">{label}</p>
                       <p className="mt-1 text-emerald-400 font-medium">
-                        Average: <span className="font-bold text-foreground">{item.value}</span> / 10 ★
+                        Average: <span className="font-bold text-foreground">{item.value}</span> / 7 ★
                       </p>
                       {count && (
                         <p className="text-muted-foreground">
