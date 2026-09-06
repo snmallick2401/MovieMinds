@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { recalculateMediaRating } from "@/lib/media/aggregates";
 import { prisma } from "@/lib/prisma";
@@ -27,6 +28,10 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       type: "RATED",
       ratingId: result.rating.id,
     });
+
+    revalidateTag(`user-stats-${user.id}`);
+    revalidateTag("user-stats");
+    revalidateTag("user-stats-v7");
     
     return NextResponse.json({ rating: { id: result.rating.id, rating: Number(result.rating.rating), mediaId: result.rating.mediaId }, summary: { communityAverageRating: result.summary.communityAverageRating ? Number(result.summary.communityAverageRating) : null, weightedRating: result.summary.weightedRating ? Number(result.summary.weightedRating) : null, ratingCount: result.summary.ratingCount, popularityScore: result.summary.popularityScore, ratingDistribution: result.summary.ratingDistribution } });
   } catch { return NextResponse.json({ error: "Could not update rating." }, { status: 500 }); }
@@ -48,6 +53,10 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: "Rating not found." }, { status: 404 });
       
     await removeActivity(user.id, result.mediaId, "RATED");
+
+    revalidateTag(`user-stats-${user.id}`);
+    revalidateTag("user-stats");
+    revalidateTag("user-stats-v7");
 
     return NextResponse.json({ summary: { communityAverageRating: result.summary.communityAverageRating ? Number(result.summary.communityAverageRating) : null, weightedRating: result.summary.weightedRating ? Number(result.summary.weightedRating) : null, ratingCount: result.summary.ratingCount, popularityScore: result.summary.popularityScore, ratingDistribution: result.summary.ratingDistribution } });
   } catch {

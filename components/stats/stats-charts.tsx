@@ -56,8 +56,10 @@ export type RatingStatsData = {
 };
 
 export function StatsCharts({ ratingStats }: { stats?: StatsData; ratingStats: RatingStatsData }) {
-  // Sort distribution ascending from 0.5 up to 7
-  const sortedDistribution = [...(ratingStats.distribution || [])].sort((a, b) => a.rating - b.rating);
+  // Sort distribution ascending from 0.5 up to 7, guaranteeing no lingering > 7 buckets
+  const sortedDistribution = [...(ratingStats.distribution || [])]
+    .filter((a) => a.rating <= 7)
+    .sort((a, b) => a.rating - b.rating);
 
   // Format monthly activity with human readable month names
   const formattedMonthly = (ratingStats.monthlyActivity || []).map((item) => ({
@@ -147,7 +149,7 @@ export function StatsCharts({ ratingStats }: { stats?: StatsData; ratingStats: R
                 tickLine={false}
                 axisLine={{ stroke: "hsl(var(--border))" }}
                 tick={{ fill: "hsl(var(--muted-foreground))" }}
-                interval={1}
+                interval={0}
               />
               <YAxis
                 allowDecimals={false}
@@ -163,7 +165,7 @@ export function StatsCharts({ ratingStats }: { stats?: StatsData; ratingStats: R
                   const item = payload[0];
                   return (
                     <div className="rounded-lg border border-border bg-card/95 px-3.5 py-2.5 text-xs shadow-xl backdrop-blur-md">
-                      <p className="font-semibold text-foreground">Rating: {label} ★</p>
+                      <p className="font-semibold text-foreground">Rating: {label} / 7 ★</p>
                       <p className="mt-1 text-amber-400 font-medium">
                         Count: <span className="font-bold text-foreground">{item.value}</span> title{item.value === 1 ? "" : "s"}
                       </p>

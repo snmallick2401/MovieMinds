@@ -172,8 +172,8 @@ const getCachedStats = unstable_cache(
         .map(([rating, count]) => ({ rating, count })),
     };
   },
-  ["user-stats"],
-  { revalidate: 3600, tags: ["user-stats"] }
+  ["user-stats-v7"],
+  { revalidate: 3600, tags: ["user-stats", "user-stats-v7"] }
 );
 
 export const getUserStats = async (userId: string) => {

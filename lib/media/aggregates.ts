@@ -50,8 +50,8 @@ export const recalculateUserStats = (userId: string) => {
       for (const item of byGenre) for (const { genre } of item.media.genres) { const current = genres.get(genre.name) ?? { count: 0, total: 0 }; current.count += 1; current.total += Number(item.rating); genres.set(genre.name, current); }
       return { totalRatings: aggregate._count.rating, averageRating: aggregate._avg.rating ? Number(aggregate._avg.rating) : null, distribution, monthlyActivity: [...months.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([month, value]) => ({ month, count: value.count, average: Number((value.total / value.count).toFixed(2)) })), mediaTypeBreakdown: [...types.entries()].map(([name, count]) => ({ name, count })), genreAverages: [...genres.entries()].map(([name, value]) => ({ name, average: Number((value.total / value.count).toFixed(2)), count: value.count })).sort((left, right) => right.average - left.average).slice(0, 8) };
     },
-    [`recalc-user-stats-${userId}`],
-    { revalidate: 1800, tags: [`user-stats-${userId}`] }
+    [`recalc-user-stats-v7-${userId}`],
+    { revalidate: 1800, tags: [`user-stats-${userId}`, `user-stats-v7-${userId}`, "user-stats"] }
   );
 
   return getCachedStats(userId);

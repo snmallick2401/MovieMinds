@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { requireUser, isUnauthorized } from "@/lib/auth/server";
 import { recalculateMediaRating } from "@/lib/media/aggregates";
 import { prisma } from "@/lib/prisma";
@@ -66,6 +67,10 @@ export async function POST(request: Request) {
       type: "RATED",
       ratingId: rating.record.id,
     });
+
+    revalidateTag(`user-stats-${user.id}`);
+    revalidateTag("user-stats");
+    revalidateTag("user-stats-v7");
 
     return NextResponse.json({ rating: { id: rating.record.id, mediaId: rating.record.mediaId, rating: Number(rating.record.rating), createdAt: rating.record.createdAt.toISOString(), updatedAt: rating.record.updatedAt.toISOString() }, summary: { communityAverageRating: rating.summary.communityAverageRating ? Number(rating.summary.communityAverageRating) : null, weightedRating: rating.summary.weightedRating ? Number(rating.summary.weightedRating) : null, ratingCount: rating.summary.ratingCount, popularityScore: rating.summary.popularityScore, ratingDistribution: rating.summary.ratingDistribution } });
   } catch (error) {
