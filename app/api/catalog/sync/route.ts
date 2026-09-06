@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import crypto from "crypto";
 import { z } from "zod";
 import { syncCollection } from "@/lib/media/sync";
+import { scrubSensitiveData } from "@/lib/security/credentials";
 
 // Rate limiting to prevent brute force attacks on the sync endpoint
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute window
@@ -66,10 +67,10 @@ export async function POST(request: NextRequest) {
 
   // 2. Validate Authorization Header in Constant Time
   const secret = process.env.CATALOG_SYNC_SECRET;
-  const isSecretConfigured = typeof secret === "string" && secret.trim().length > 0;
+  const isSecretConfigured = typeof secret === "string" && secret.trim().length >= 32;
 
   // Use a dummy constant if secret is not configured to maintain identical execution time
-  const targetSecret = isSecretConfigured ? secret! : "dummy_unconfigured_secret_placeholder";
+  const targetSecret = isSecretConfigured ? secret! : "dummy_unconfigured_secret_placeholder_must_be_long_enough";
   const expectedHeader = `Bearer ${targetSecret}`;
   const authHeader = request.headers.get("authorization") ?? "";
 
@@ -101,7 +102,7 @@ export async function POST(request: NextRequest) {
       {
         error: "Catalog sync failed.",
         ...(process.env.NODE_ENV !== "production" && {
-          details: error instanceof Error ? error.message : String(error),
+          details: scrubSensitiveData(error instanceof Error ? error.message : String(error)),
         }),
       },
       { status: 502 }

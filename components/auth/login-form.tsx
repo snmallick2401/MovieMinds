@@ -17,18 +17,13 @@ export function LoginForm() {
   const form = useForm<LoginInput>({ resolver: zodResolver(loginSchema) });
   const destination = getSafeRedirectUrl(params.get("next"), "/");
   async function submit(values: LoginInput) {
-    console.log("Submit started");
     setError(null);
     try {
-      console.log("Calling supabase...");
       const { error: authError } = await createClient().auth.signInWithPassword(values);
-      console.log("Supabase returned", authError);
       if (authError) return setError(authError.message);
-      console.log("Replacing route");
       router.replace(destination);
       router.refresh();
-    } catch (err) {
-      console.error("Submit caught error", err);
+    } catch {
       setError(
         "Supabase is not configured. Add your real project URL and anon key to .env.local, then restart npm run dev.",
       );
