@@ -2,11 +2,15 @@ import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import type { MediaSummary } from "@/types/media";
 import { serializeMediaSummary } from "@/lib/media/serializers";
+import { getAiTasteMatch, type AiUserProfile } from "@/lib/ai/client";
 
 export type TasteMatchResult = {
   score: number; // 0-100
   sharedFavorites: MediaSummary[];
   commonGenres: string[];
+  divergentGenres?: string[];
+  tasteArchetype?: string;
+  compatibilitySummary?: string;
 };
 
 export async function calculateTasteMatch(userId1: string, userId2: string): Promise<TasteMatchResult> {
@@ -92,35 +96,74 @@ export async function calculateTasteMatch(userId1: string, userId2: string): Pro
     const topB = Object.entries(countsB).sort((a, b) => b[1] - a[1]).slice(0, 5).map((x) => x[0]);
     const commonGenres = topA.filter((g) => topB.includes(g));
 
-    // 6. Score Algorithm
-    const minLibSize = Math.min(libA.length, libB.length);
-    if (minLibSize === 0) {
-      return { score: 0, sharedFavorites: [], commonGenres: [] };
-    }
-
-    const sharedRatio = sharedMedia.length / minLibSize;
-    const libraryScore = Math.min(40, sharedRatio * 80); // 50% overlap gives max 40 points
-
-    const genreScore = (commonGenres.length / 5) * 30; // max 30 points
-
-    let ratingScore = 30;
-    if (ratedSharedCount > 0) {
-      const avgDiff = ratingDiffSum / ratedSharedCount;
-      ratingScore = Math.max(0, 30 - (avgDiff * (30 / 3.5))); // Deduct points for larger rating differences (scaled to 7-point system)
-    }
-
-    const rawScore = Math.round(libraryScore + genreScore + ratingScore);
-    const finalScore = sharedMedia.length === 0 ? Math.round(genreScore / 2) : Math.max(10, Math.min(100, rawScore));
-
-    // 7. Find Shared Favorites (respecting showFavorites privacy)
+    // 6. Find Shared Favorites (respecting showFavorites privacy)
     let topSharedIds: string[] = [];
+    let favIdsA = new Set<string>();
+    let favIdsB = new Set<string>();
     if (userA.showFavorites && userB.showFavorites) {
       const [favA, favB] = await Promise.all([
         prisma.userFavorite.findMany({ where: { userId: idA } }),
         prisma.userFavorite.findMany({ where: { userId: idB } }),
       ]);
-      const favIdsA = new Set(favA.map((f) => f.mediaId));
+      favIdsA = new Set(favA.map((f) => f.mediaId));
+      favIdsB = new Set(favB.map((f) => f.mediaId));
       topSharedIds = favB.filter((f) => favIdsA.has(f.mediaId)).map((f) => f.mediaId);
+    }
+
+    // 7. Attempt AI Microservice Taste Match (4-factor ML correlation)
+    const minLibSize = Math.min(libA.length, libB.length);
+    if (minLibSize === 0) {
+      return { score: 0, sharedFavorites: [], commonGenres: [] };
+    }
+
+    let aiMatch = null;
+    try {
+      const aiProfileA: AiUserProfile = {
+        userId: idA,
+        favoriteGenres: topA,
+        interactions: libA.map((e) => ({
+          mediaId: e.mediaId,
+          rating: ratingMapA.get(e.mediaId) ?? null,
+          status: e.status,
+          isFavorite: favIdsA.has(e.mediaId),
+          watchedAt: e.updatedAt?.toISOString() ?? null,
+        })),
+      };
+
+      const aiProfileB: AiUserProfile = {
+        userId: idB,
+        favoriteGenres: topB,
+        interactions: libB.map((e) => ({
+          mediaId: e.mediaId,
+          rating: ratingMapB.get(e.mediaId) ?? null,
+          status: e.status,
+          isFavorite: favIdsB.has(e.mediaId),
+          watchedAt: e.updatedAt?.toISOString() ?? null,
+        })),
+      };
+
+      aiMatch = await getAiTasteMatch(aiProfileA, aiProfileB);
+    } catch {
+      aiMatch = null;
+    }
+
+    // 8. Score Calculation (AI ML primary, resilient heuristic fallback)
+    let finalScore: number;
+    if (aiMatch) {
+      finalScore = aiMatch.score;
+    } else {
+      const sharedRatio = sharedMedia.length / minLibSize;
+      const libraryScore = Math.min(40, sharedRatio * 80); // 50% overlap gives max 40 points
+      const genreScore = (commonGenres.length / 5) * 30; // max 30 points
+
+      let ratingScore = 30;
+      if (ratedSharedCount > 0) {
+        const avgDiff = ratingDiffSum / ratedSharedCount;
+        ratingScore = Math.max(0, 30 - (avgDiff * (30 / 3.5))); // Deduct points for larger rating differences (scaled to 7-point system)
+      }
+
+      const rawScore = Math.round(libraryScore + genreScore + ratingScore);
+      finalScore = sharedMedia.length === 0 ? Math.round(genreScore / 2) : Math.max(10, Math.min(100, rawScore));
     }
 
     if (topSharedIds.length === 0 && sharedMedia.length > 0) {
@@ -145,7 +188,10 @@ export async function calculateTasteMatch(userId1: string, userId2: string): Pro
     return {
       score: finalScore,
       sharedFavorites: topSharedFull.map((m) => serializeMediaSummary(m as any)),
-      commonGenres: commonGenres.slice(0, 3),
+      commonGenres: (aiMatch?.commonGenres && aiMatch.commonGenres.length > 0) ? aiMatch.commonGenres.slice(0, 3) : commonGenres.slice(0, 3),
+      divergentGenres: aiMatch?.divergentGenres,
+      tasteArchetype: aiMatch?.tasteArchetype,
+      compatibilitySummary: aiMatch?.compatibilitySummary,
     };
   };
 

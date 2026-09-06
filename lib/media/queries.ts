@@ -325,29 +325,56 @@ import {
 
 const getCachedRecs = unstable_cache(
   async (userId: string | null, limit: number) => {
-    // 1. Fetch candidate media from DB with narrow select
+    // 1. Fetch candidate media from DB with rich metadata
     const candidateRows = await prisma.media.findMany({
       where: {
         status: { in: ["RELEASED", "FINISHED"] },
         posterUrl: { not: null },
       },
-      select: narrowCardSelect,
+      select: {
+        ...narrowCardSelect,
+        runtime: true,
+        contentRating: true,
+        credits: {
+          select: {
+            role: true,
+            job: true,
+            person: { select: { name: true } },
+          },
+          take: 8,
+        },
+      },
       orderBy: [{ popularity: "desc" }, { voteCount: "desc" }],
-      take: 24,
+      take: 36,
     });
 
-    const candidates: AiMediaItem[] = candidateRows.map((m: any) => ({
-      id: m.id,
-      title: m.title,
-      originalTitle: m.originalTitle,
-      mediaType: m.mediaType,
-      genres: m.genres.map((g: any) => g.genre.name),
-      description: m.description,
-      year: m.year,
-      averageRating: m.averageRating,
-      popularity: m.popularity,
-      posterUrl: m.posterUrl,
-    }));
+    const candidates: AiMediaItem[] = candidateRows.map((m: any) => {
+      const creators = m.credits
+        ?.filter((c: any) => c.role === "CREW" || c.job === "Director")
+        .map((c: any) => c.person?.name)
+        .filter(Boolean) ?? [];
+      const cast = m.credits
+        ?.filter((c: any) => c.role === "CAST")
+        .map((c: any) => c.person?.name)
+        .filter(Boolean) ?? [];
+
+      return {
+        id: m.id,
+        title: m.title,
+        originalTitle: m.originalTitle,
+        mediaType: m.mediaType,
+        genres: m.genres.map((g: any) => g.genre.name),
+        creators,
+        cast,
+        description: m.description,
+        year: m.year,
+        averageRating: m.averageRating,
+        popularity: m.popularity,
+        posterUrl: m.posterUrl,
+        runtime: m.runtime,
+        contentRating: m.contentRating,
+      };
+    });
 
     const candidateMap = new Map(candidateRows.map((m: any) => [m.id, serializeMediaSummary(m)]));
 
@@ -375,6 +402,7 @@ const getCachedRecs = unstable_cache(
     const favSet = new Set(favorites.map((f) => f.mediaId));
     const ratingMap = new Map(ratings.map((r) => [r.mediaId, Number(r.rating)]));
     const statusMap = new Map(library.map((l) => [l.mediaId, l.status]));
+    const libraryEntryMap = new Map(library.map((l) => [l.mediaId, l]));
 
     const allInteractedMediaIds = new Set([
       ...library.map((l) => l.mediaId),
@@ -382,21 +410,29 @@ const getCachedRecs = unstable_cache(
       ...favorites.map((f) => f.mediaId),
     ]);
 
-    const interactions = Array.from(allInteractedMediaIds).map((mId) => ({
-      mediaId: mId,
-      rating: ratingMap.get(mId) ?? null,
-      status: statusMap.get(mId) ?? null,
-      isFavorite: favSet.has(mId),
-    }));
+    const interactions = Array.from(allInteractedMediaIds).map((mId) => {
+      const libEntry = libraryEntryMap.get(mId);
+      return {
+        mediaId: mId,
+        rating: ratingMap.get(mId) ?? null,
+        status: statusMap.get(mId) ?? null,
+        isFavorite: favSet.has(mId),
+        watchedAt: libEntry?.updatedAt?.toISOString() ?? null,
+      };
+    });
 
     const aiUserPayload: AiUserProfile = {
       userId,
       favoriteGenres: userProfile?.favoriteGenres ?? [],
+      favoriteCreators: (userProfile as any)?.favoriteCreators ?? [],
       interactions,
     };
 
-    // 3. Call Python AI Microservice
-    const aiResults = await getAiUserRecommendations(aiUserPayload, candidates, limit);
+    // 3. Call Python AI Microservice with MMR Diversity
+    const aiResults = await getAiUserRecommendations(aiUserPayload, candidates, limit, {
+      useMmr: true,
+      mmrLambda: 0.75,
+    });
 
     if (aiResults && aiResults.length > 0) {
       const recommended: MediaSummary[] = [];
@@ -443,18 +479,37 @@ export async function getPersonalizedRecommendations(
 }
 
 const getCachedSimilar = unstable_cache(
-  async (targetId: string, targetMediaType: string, targetTitle: string, targetGenres: string[], limit: number) => {
-    const candidates = await prisma.media.findMany({
+  async (
+    targetId: string,
+    targetMediaType: string,
+    targetTitle: string,
+    targetGenres: string[],
+    targetCreators: string[],
+    targetCast: string[],
+    targetYear: number | null,
+    limit: number
+  ) => {
+    const candidateRows = await prisma.media.findMany({
       where: {
         id: { not: targetId },
         mediaType: targetMediaType as any,
       },
-      select: narrowCardSelect,
+      select: {
+        ...narrowCardSelect,
+        credits: {
+          select: {
+            role: true,
+            job: true,
+            person: { select: { name: true } },
+          },
+          take: 8,
+        },
+      },
       orderBy: { popularity: "desc" },
-      take: 18,
+      take: 24,
     });
 
-    const candidateSummaries = candidates.map((c: any) => serializeMediaSummary(c));
+    const candidateSummaries = candidateRows.map((c: any) => serializeMediaSummary(c));
     const candidateMap = new Map(candidateSummaries.map((c) => [c.id, c]));
 
     const targetAi: AiMediaItem = {
@@ -462,19 +517,35 @@ const getCachedSimilar = unstable_cache(
       title: targetTitle,
       mediaType: targetMediaType,
       genres: targetGenres,
+      creators: targetCreators,
+      cast: targetCast,
+      year: targetYear,
     };
 
-    const candidateAi: AiMediaItem[] = candidateSummaries.map((c) => ({
-      id: c.id,
-      title: c.title,
-      originalTitle: c.originalTitle,
-      mediaType: c.mediaType,
-      genres: c.genres.map((g) => g.name),
-      year: c.year,
-      averageRating: c.averageRating,
-      popularity: c.popularity,
-      posterUrl: c.posterUrl,
-    }));
+    const candidateAi: AiMediaItem[] = candidateRows.map((c: any) => {
+      const creators = c.credits
+        ?.filter((cr: any) => cr.role === "CREW" || cr.job === "Director")
+        .map((cr: any) => cr.person?.name)
+        .filter(Boolean) ?? [];
+      const cast = c.credits
+        ?.filter((cr: any) => cr.role === "CAST")
+        .map((cr: any) => cr.person?.name)
+        .filter(Boolean) ?? [];
+
+      return {
+        id: c.id,
+        title: c.title,
+        originalTitle: c.originalTitle,
+        mediaType: c.mediaType,
+        genres: c.genres.map((g: any) => g.genre.name),
+        creators,
+        cast,
+        year: c.year,
+        averageRating: c.averageRating,
+        popularity: c.popularity,
+        posterUrl: c.posterUrl,
+      };
+    });
 
     const aiSimilar = await getAiSimilarMedia(targetAi, candidateAi, limit);
     if (aiSimilar && aiSimilar.length > 0) {
@@ -482,13 +553,17 @@ const getCachedSimilar = unstable_cache(
       for (const s of aiSimilar) {
         const item = candidateMap.get(s.mediaId);
         if (item) {
+          let reason = `Similar to ${targetTitle}`;
+          if (s.sharedCreators && s.sharedCreators.length > 0) {
+            reason = `Directed by ${s.sharedCreators[0]}`;
+          } else if (s.sharedGenres && s.sharedGenres.length > 0) {
+            reason = `Shared ${s.sharedGenres.slice(0, 2).join(", ")}`;
+          }
+
           results.push({
             ...item,
             matchPercentage: s.matchPercentage,
-            recommendationReason:
-              s.sharedGenres.length > 0
-                ? `Shared ${s.sharedGenres.join(", ")}`
-                : `Similar to ${targetTitle}`,
+            recommendationReason: reason,
           });
         }
       }
@@ -506,11 +581,21 @@ export async function findSimilarMedia(
   limit = 8,
 ): Promise<MediaSummary[]> {
   try {
+    const creators = (media.credits || [])
+      .filter((c) => c.role === "CREW" || c.job === "Director")
+      .map((c) => c.name);
+    const cast = (media.credits || [])
+      .filter((c) => c.role === "CAST")
+      .map((c) => c.name);
+
     return await getCachedSimilar(
       media.id,
       media.mediaType,
       media.title,
       media.genres.map((g) => g.name),
+      creators,
+      cast,
+      media.year,
       limit
     );
   } catch (error) {

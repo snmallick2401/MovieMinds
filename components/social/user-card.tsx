@@ -45,6 +45,14 @@ export async function UserCard({ user, currentUserId, match }: UserCardProps) {
           )}
         </div>
 
+        {match?.tasteArchetype && (
+          <div className="mt-3">
+            <span className="inline-block rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-[11px] font-medium text-primary">
+              {match.tasteArchetype}
+            </span>
+          </div>
+        )}
+
         {match?.commonGenres && match.commonGenres.length > 0 && (
           <div className="mt-4">
             <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider font-semibold">Similar Taste</p>

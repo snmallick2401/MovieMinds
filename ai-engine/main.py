@@ -37,6 +37,8 @@ class RecommendUserRequest(BaseModel):
     user: UserProfile
     candidates: List[MediaItem]
     topK: Optional[int] = 12
+    useMmr: Optional[bool] = True
+    mmrLambda: Optional[float] = 0.75
 
 
 class SimilarMediaRequest(BaseModel):
@@ -71,6 +73,8 @@ def recommend_user(payload: RecommendUserRequest):
             user=payload.user,
             candidates=payload.candidates,
             top_k=payload.topK or 12,
+            use_mmr=payload.useMmr if payload.useMmr is not None else True,
+            mmr_lambda=payload.mmrLambda if payload.mmrLambda is not None else 0.75,
         )
         return results
     except Exception as e:

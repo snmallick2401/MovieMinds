@@ -4,11 +4,16 @@ export interface AiMediaItem {
   originalTitle?: string | null;
   mediaType: string;
   genres: string[];
+  creators?: string[];
+  cast?: string[];
+  tags?: string[];
   description?: string | null;
   year?: number | null;
   averageRating?: number | null;
   popularity?: number | null;
   posterUrl?: string | null;
+  runtime?: number | null;
+  contentRating?: string | null;
 }
 
 export interface AiUserInteraction {
@@ -16,12 +21,23 @@ export interface AiUserInteraction {
   rating?: number | null;
   status?: string | null;
   isFavorite?: boolean;
+  watchedAt?: string | null;
 }
 
 export interface AiUserProfile {
   userId: string;
   favoriteGenres: string[];
+  favoriteCreators?: string[];
   interactions: AiUserInteraction[];
+}
+
+export interface AiRecommendationFactors {
+  contentSimilarity: number;
+  qualityScore: number;
+  popularityScore: number;
+  diversityBonus: number;
+  predictedRating?: number;
+  polarityAdjustment?: number;
 }
 
 export interface AiRecommendationResult {
@@ -29,6 +45,7 @@ export interface AiRecommendationResult {
   matchPercentage: number;
   score: number;
   reason: string;
+  factors?: AiRecommendationFactors;
 }
 
 export interface AiSimilarResult {
@@ -36,12 +53,24 @@ export interface AiSimilarResult {
   similarityScore: number;
   matchPercentage: number;
   sharedGenres: string[];
+  sharedCreators?: string[];
+  eraMatch?: boolean;
+}
+
+export interface AiTasteMatchFactorBreakdown {
+  ratingCorrelation: number;
+  genreSimilarity: number;
+  librarySynergy: number;
+  consensusScore: number;
 }
 
 export interface AiTasteMatchResult {
   score: number;
   commonGenres: string[];
+  divergentGenres?: string[];
+  tasteArchetype?: string;
   compatibilitySummary: string;
+  factors?: AiTasteMatchFactorBreakdown;
 }
 
 const AI_ENGINE_BASE_URL = process.env.AI_ENGINE_URL || "http://127.0.0.1:8001";
@@ -52,7 +81,7 @@ const AI_ENGINE_BASE_URL = process.env.AI_ENGINE_URL || "http://127.0.0.1:8001";
 export async function checkAiEngineHealth(): Promise<boolean> {
   try {
     const res = await fetch(`${AI_ENGINE_BASE_URL}/health`, {
-      signal: AbortSignal.timeout(350),
+      signal: AbortSignal.timeout(400),
       cache: "no-store",
     });
     return res.ok;
@@ -67,14 +96,21 @@ export async function checkAiEngineHealth(): Promise<boolean> {
 export async function getAiUserRecommendations(
   user: AiUserProfile,
   candidates: AiMediaItem[],
-  topK: number = 12
+  topK: number = 12,
+  options?: { useMmr?: boolean; mmrLambda?: number }
 ): Promise<AiRecommendationResult[] | null> {
   try {
     const res = await fetch(`${AI_ENGINE_BASE_URL}/recommend/user`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user, candidates, topK }),
-      signal: AbortSignal.timeout(600),
+      body: JSON.stringify({
+        user,
+        candidates,
+        topK,
+        useMmr: options?.useMmr ?? true,
+        mmrLambda: options?.mmrLambda ?? 0.75,
+      }),
+      signal: AbortSignal.timeout(1000),
       cache: "no-store",
     });
 
@@ -99,7 +135,7 @@ export async function getAiSimilarMedia(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ target, candidates, topK }),
-      signal: AbortSignal.timeout(500),
+      signal: AbortSignal.timeout(800),
       cache: "no-store",
     });
 
@@ -123,7 +159,7 @@ export async function getAiTasteMatch(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user1, user2 }),
-      signal: AbortSignal.timeout(500),
+      signal: AbortSignal.timeout(800),
       cache: "no-store",
     });
 
