@@ -2,13 +2,22 @@ import { prisma } from "@/lib/prisma";
 import { UserCard } from "./user-card";
 import { calculateTasteMatch } from "@/lib/social/taste-match";
 
+const publicUserSelect = {
+  id: true,
+  username: true,
+  displayName: true,
+  avatarUrl: true,
+  createdAt: true,
+  _count: { select: { reviews: true, library: true } },
+};
+
 export async function PeopleList({ category, currentUserId }: { category: "similar" | "popular" | "new", currentUserId?: string }) {
   let usersData: any[] = [];
 
   if (category === "new") {
     const users = await prisma.user.findMany({
       where: currentUserId ? { id: { not: currentUserId } } : undefined,
-      include: { _count: { select: { reviews: true, library: true } } },
+      select: publicUserSelect,
       orderBy: { createdAt: "desc" },
       take: 6,
     });
@@ -16,7 +25,7 @@ export async function PeopleList({ category, currentUserId }: { category: "simil
   } else if (category === "popular") {
     const users = await prisma.user.findMany({
       where: currentUserId ? { id: { not: currentUserId } } : undefined,
-      include: { _count: { select: { reviews: true, library: true } } },
+      select: publicUserSelect,
       orderBy: { reviews: { _count: "desc" } },
       take: 6,
     });
@@ -41,7 +50,7 @@ export async function PeopleList({ category, currentUserId }: { category: "simil
         libraryPublic: true,
         library: { some: { status: "COMPLETED" } },
       },
-      include: { _count: { select: { reviews: true, library: true } } },
+      select: publicUserSelect,
       orderBy: { updatedAt: "desc" },
       take: 12,
     });

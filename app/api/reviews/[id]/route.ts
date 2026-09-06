@@ -3,7 +3,7 @@ import { requireUser, isUnauthorized } from "@/lib/auth/server";
 import { prisma } from "@/lib/prisma";
 import { getMediaReviews } from "@/lib/reviews/queries";
 import { reviewUpdateSchema } from "@/lib/validations/library";
-import { removeActivity } from "@/lib/activity/tracking";
+import { logActivity, removeActivity } from "@/lib/activity/tracking";
 
 export async function PUT(
   request: Request,
@@ -31,6 +31,18 @@ export async function PUT(
       where: { id },
       select: { mediaId: true },
     });
+
+    if (parsed.data.visibility === "PRIVATE") {
+      await removeActivity(user.id, updated.mediaId, "REVIEWED");
+    } else if (parsed.data.visibility === "PUBLIC") {
+      await logActivity({
+        userId: user.id,
+        mediaId: updated.mediaId,
+        type: "REVIEWED",
+        reviewId: id,
+      });
+    }
+
     const reviews = await getMediaReviews(updated.mediaId, user.id);
     return NextResponse.json({ review: reviews.userReview });
   } catch (error) {

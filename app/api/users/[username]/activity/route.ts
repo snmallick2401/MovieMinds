@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { createClient } from "@/lib/supabase/server";
 
 export async function GET(
   request: Request,
@@ -10,15 +11,30 @@ export async function GET(
     
     const user = await prisma.user.findUnique({
       where: { username },
-      select: { id: true, showActivity: true, libraryPublic: true },
+      select: { id: true, showActivity: true, libraryPublic: true, showRatings: true },
     });
     
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
     
-    if (!user.showActivity || !user.libraryPublic) {
+    const supabase = await createClient();
+    const {
+      data: { user: currentUser },
+    } = await supabase.auth.getUser();
+    const isOwner = currentUser?.id === user.id;
+
+    if (!isOwner && (!user.showActivity || !user.libraryPublic)) {
       return NextResponse.json({ items: [], nextCursor: null });
+    }
+
+    // Determine types to exclude for external viewers
+    const excludedTypes: ("WISHLISTED" | "RATED")[] = [];
+    if (!isOwner) {
+      excludedTypes.push("WISHLISTED"); // Wishlist items are strictly private
+      if (!user.showRatings) {
+        excludedTypes.push("RATED"); // Hide ratings if user disabled rating visibility
+      }
     }
     
     const { searchParams } = new URL(request.url);
@@ -26,7 +42,10 @@ export async function GET(
     const limit = 20;
     
     const activities = await prisma.activity.findMany({
-      where: { userId: user.id },
+      where: {
+        userId: user.id,
+        ...(excludedTypes.length > 0 ? { type: { notIn: excludedTypes } } : {}),
+      },
       take: limit + 1,
       skip: cursor ? 1 : 0,
       cursor: cursor ? { id: cursor } : undefined,

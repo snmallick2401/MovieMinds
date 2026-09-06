@@ -4,7 +4,17 @@ import { prisma } from "@/lib/prisma";
 import { formatDistanceToNow } from "date-fns";
 import { Star } from "lucide-react";
 
-export async function ReviewsTab({ userId, username }: { userId: string, username: string }) {
+export async function ReviewsTab({
+  userId,
+  username,
+  showRatings = true,
+  isCurrentUser = false,
+}: {
+  userId: string;
+  username: string;
+  showRatings?: boolean;
+  isCurrentUser?: boolean;
+}) {
   const reviews = await prisma.review.findMany({
     where: { userId, visibility: "PUBLIC" },
     include: {
@@ -26,11 +36,14 @@ export async function ReviewsTab({ userId, username }: { userId: string, usernam
     );
   }
 
-  // Fetch ratings for these media items by this user to display alongside reviews
+  // Fetch ratings for these media items only if ratings are public or viewed by profile owner
+  const shouldShowRatings = isCurrentUser || showRatings;
   const mediaIds = reviews.map(r => r.mediaId);
-  const ratings = await prisma.userRating.findMany({
-    where: { userId, mediaId: { in: mediaIds } }
-  });
+  const ratings = shouldShowRatings
+    ? await prisma.userRating.findMany({
+        where: { userId, mediaId: { in: mediaIds } }
+      })
+    : [];
   const ratingMap = new Map(ratings.map(r => [r.mediaId, Number(r.rating)]));
 
   return (

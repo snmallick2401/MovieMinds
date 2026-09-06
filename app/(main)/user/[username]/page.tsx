@@ -61,6 +61,11 @@ export default async function PublicProfilePage({
   const supabase = await createClient();
   const { data: { user: authUser } } = await supabase.auth.getUser();
   const isCurrentUser = authUser?.id === profile.id;
+
+  // Protect PII: Ensure email is stripped for external profile visitors
+  if (!isCurrentUser) {
+    (profile as any).email = undefined;
+  }
   
   const [followersCount, followingCount, isFollowing] = await Promise.all([
     prisma.follow.count({ where: { followingId: profile.id } }).catch(() => 0),
@@ -83,14 +88,14 @@ export default async function PublicProfilePage({
         social={{ followersCount, followingCount, isFollowing, isCurrentUser, authUser }} 
       />
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <ProfileTabs profile={profile} initialTab={tab} stats={stats} />
+        <ProfileTabs profile={profile} initialTab={tab} stats={stats} isCurrentUser={isCurrentUser} />
         <div className="mt-8 min-h-[50vh]">
           <Suspense fallback={<div className="flex justify-center py-12"><Loader2 className="size-8 animate-spin text-muted-foreground" /></div>}>
             {tab === "overview" && <OverviewTab profile={profile} stats={stats} />}
-            {tab === "stats" && profile.showStats && <StatsTab profile={profile} stats={stats} />}
-            {tab === "reviews" && profile.showReviews && <ReviewsTab userId={profile.id} username={profile.username} />}
-            {tab === "ratings" && profile.showRatings && <RatingsTab userId={profile.id} username={profile.username} />}
-            {tab === "library" && profile.libraryPublic && <LibraryTab userId={profile.id} username={profile.username} filterStatus={status} />}
+            {tab === "stats" && (profile.showStats || isCurrentUser) && <StatsTab profile={profile} stats={stats} />}
+            {tab === "reviews" && (profile.showReviews || isCurrentUser) && <ReviewsTab userId={profile.id} username={profile.username} showRatings={profile.showRatings} isCurrentUser={isCurrentUser} />}
+            {tab === "ratings" && (profile.showRatings || isCurrentUser) && <RatingsTab userId={profile.id} username={profile.username} />}
+            {tab === "library" && (profile.libraryPublic || isCurrentUser) && <LibraryTab userId={profile.id} username={profile.username} filterStatus={status} />}
           </Suspense>
         </div>
       </div>

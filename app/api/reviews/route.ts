@@ -24,12 +24,14 @@ export async function POST(request: Request) {
       create: { userId: user.id, ...parsed.data, title: parsed.data.title || null },
       update: { ...parsed.data, title: parsed.data.title || null, editedAt: new Date() },
     });
-    await logActivity({
-      userId: user.id,
-      mediaId: parsed.data.mediaId,
-      type: "REVIEWED",
-      reviewId: review.id,
-    });
+    if (review.visibility === "PUBLIC") {
+      await logActivity({
+        userId: user.id,
+        mediaId: parsed.data.mediaId,
+        type: "REVIEWED",
+        reviewId: review.id,
+      });
+    }
     const reviews = await getMediaReviews(parsed.data.mediaId, user.id);
     return NextResponse.json({ review: reviews.userReview }, { status: 201 });
   } catch (error) {

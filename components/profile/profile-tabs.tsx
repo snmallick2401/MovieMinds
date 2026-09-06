@@ -16,18 +16,28 @@ type ProfileWithFavorites = Prisma.UserGetPayload<{
   }
 }>;
 
-export function ProfileTabs({ profile, initialTab, stats }: { profile: ProfileWithFavorites, initialTab: string, stats: unknown }) {
+export function ProfileTabs({
+  profile,
+  initialTab,
+  stats,
+  isCurrentUser = false,
+}: {
+  profile: ProfileWithFavorites;
+  initialTab: string;
+  stats: unknown;
+  isCurrentUser?: boolean;
+}) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentTab = searchParams.get("tab") || initialTab;
 
   const tabs = [
     { id: "overview", label: "Overview" },
-    { id: "reviews", label: "Reviews", hidden: !profile.showReviews },
-    { id: "ratings", label: "Ratings", hidden: !profile.showRatings },
-    { id: "library", label: "Library", hidden: !profile.libraryPublic },
-    { id: "stats", label: "Stats", hidden: !profile.showStats },
-  ].filter(t => !t.hidden);
+    { id: "reviews", label: "Reviews", hidden: !(profile.showReviews || isCurrentUser) },
+    { id: "ratings", label: "Ratings", hidden: !(profile.showRatings || isCurrentUser) },
+    { id: "library", label: "Library", hidden: !(profile.libraryPublic || isCurrentUser) },
+    { id: "stats", label: "Stats", hidden: !(profile.showStats || isCurrentUser) },
+  ].filter((t) => !t.hidden);
 
   return (
     <div className="space-y-8">

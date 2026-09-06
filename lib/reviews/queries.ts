@@ -98,7 +98,16 @@ export async function getMediaReviews(
     ]),
   ];
   const ratings = await prisma.userRating.findMany({
-    where: { mediaId, userId: { in: authorIds } },
+    where: {
+      mediaId,
+      userId: { in: authorIds },
+      user: {
+        OR: [
+          ...(currentUserId ? [{ id: currentUserId }] : []),
+          { showRatings: true, libraryPublic: true },
+        ],
+      },
+    },
     select: { userId: true, rating: true },
   });
   const ratingsByUser = new Map(ratings.map((rating) => [rating.userId, Number(rating.rating)]));
