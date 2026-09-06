@@ -25,10 +25,12 @@ export async function getRatingDistribution(mediaId: string, client: RatingClien
   return RATING_BUCKETS.map((rating) => ({ rating, count: counts.get(rating) ?? 0, percentage: total ? ((counts.get(rating) ?? 0) / total) * 100 : 0 }));
 }
 
+const USER_RATING_BUCKETS = Array.from({ length: 20 }, (_, index) => (index + 1) / 2);
+
 export async function getUserRatingDistribution(userId: string): Promise<RatingDistributionItem[]> {
   const grouped = await prisma.userRating.groupBy({ by: ["rating"], where: { userId }, _count: { rating: true } });
   const total = grouped.reduce((sum, item) => sum + item._count.rating, 0); const counts = new Map(grouped.map((item) => [Number(item.rating), item._count.rating]));
-  return RATING_BUCKETS.map((rating) => ({ rating, count: counts.get(rating) ?? 0, percentage: total ? ((counts.get(rating) ?? 0) / total) * 100 : 0 }));
+  return USER_RATING_BUCKETS.map((rating) => ({ rating, count: counts.get(rating) ?? 0, percentage: total ? ((counts.get(rating) ?? 0) / total) * 100 : 0 }));
 }
 
 import { unstable_cache } from "next/cache";
