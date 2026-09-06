@@ -1,103 +1,189 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
+import { isFollowRateLimited, validateFollowTarget } from "@/lib/validations/social";
 
-export async function POST(req: Request) {
+export const dynamic = "force-dynamic";
+
+export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
-    const { data: { user }, error } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
+
     if (error || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    
-    const body = await req.json();
-    const { targetUserId } = body;
-    
-    if (!targetUserId) {
-      return NextResponse.json({ error: "Missing targetUserId" }, { status: 400 });
+
+    if (isFollowRateLimited(user.id)) {
+      logger.warn({ msg: "Follow rate limit exceeded", userId: user.id });
+      return NextResponse.json(
+        { error: "Too many follow requests. Please wait a moment." },
+        { status: 429 },
+      );
     }
-    
-    if (user.id === targetUserId) {
-      return NextResponse.json({ error: "Cannot follow yourself" }, { status: 400 });
+
+    let body: any;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+
+    const { targetUserId } = body ?? {};
+
+    const targetCheck = validateFollowTarget(targetUserId, user.id);
+    if (!targetCheck.valid) {
+      return NextResponse.json({ error: targetCheck.error }, { status: targetCheck.status });
+    }
+    const cleanTargetUserId = targetCheck.targetUserId;
+
+    // Verify target user actually exists in the database to prevent P2003 foreign key crash
+    const targetUser = await prisma.user.findUnique({
+      where: { id: cleanTargetUserId },
+      select: { id: true },
+    });
+
+    if (!targetUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     await prisma.$transaction(async (tx) => {
-      // 1. Create follow
+      // 1. Create follow record
       await tx.follow.create({
         data: {
           followerId: user.id,
-          followingId: targetUserId,
+          followingId: cleanTargetUserId,
         },
       });
 
-      // 2. Create notification
-      await tx.notification.create({
-        data: {
-          userId: targetUserId,
+      // 2. Create or deduplicate notification to prevent spamming notification feed
+      const existingUnreadNotification = await tx.notification.findFirst({
+        where: {
+          userId: cleanTargetUserId,
           actorId: user.id,
           type: "NEW_FOLLOWER",
+          read: false,
         },
       });
 
-      // 3. Create activity
-      await tx.activity.create({
-        data: {
+      if (existingUnreadNotification) {
+        // Refresh timestamp of the existing unread notification without creating a new row
+        await tx.notification.update({
+          where: { id: existingUnreadNotification.id },
+          data: { createdAt: new Date() },
+        });
+      } else {
+        await tx.notification.create({
+          data: {
+            userId: cleanTargetUserId,
+            actorId: user.id,
+            type: "NEW_FOLLOWER",
+          },
+        });
+      }
+
+      // 3. Create or deduplicate activity
+      const existingActivity = await tx.activity.findFirst({
+        where: {
           userId: user.id,
-          targetUserId: targetUserId,
+          targetUserId: cleanTargetUserId,
           type: "FOLLOWED",
         },
       });
+
+      if (existingActivity) {
+        await tx.activity.update({
+          where: { id: existingActivity.id },
+          data: { createdAt: new Date() },
+        });
+      } else {
+        await tx.activity.create({
+          data: {
+            userId: user.id,
+            targetUserId: cleanTargetUserId,
+            type: "FOLLOWED",
+          },
+        });
+      }
     });
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    if (error.code === "P2002") {
+    if (error?.code === "P2002") {
       return NextResponse.json({ error: "Already following" }, { status: 400 });
     }
-    console.error("Follow error:", error);
+    if (error?.code === "P2003") {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+    logger.error({ msg: "Follow error", error });
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
-export async function DELETE(req: Request) {
+export async function DELETE(req: NextRequest) {
   try {
     const supabase = await createClient();
-    const { data: { user }, error } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
+
     if (error || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    
-    const url = new URL(req.url);
-    const targetUserId = url.searchParams.get("targetUserId");
-    
-    if (!targetUserId) {
-      return NextResponse.json({ error: "Missing targetUserId" }, { status: 400 });
+
+    if (isFollowRateLimited(user.id)) {
+      logger.warn({ msg: "Unfollow rate limit exceeded", userId: user.id });
+      return NextResponse.json(
+        { error: "Too many requests. Please wait a moment." },
+        { status: 429 },
+      );
     }
 
+    const url = new URL(req.url);
+    const targetUserId = url.searchParams.get("targetUserId");
+
+    const targetCheck = validateFollowTarget(targetUserId, user.id);
+    if (!targetCheck.valid) {
+      return NextResponse.json({ error: targetCheck.error }, { status: targetCheck.status });
+    }
+    const cleanTargetUserId = targetCheck.targetUserId;
+
     await prisma.$transaction(async (tx) => {
-      await tx.follow.delete({
+      // 1. Delete follow record
+      await tx.follow.deleteMany({
         where: {
-          followerId_followingId: {
-            followerId: user.id,
-            followingId: targetUserId,
-          },
+          followerId: user.id,
+          followingId: cleanTargetUserId,
         },
       });
-      // Optionally delete the activity so it doesn't clutter the feed if they unfollow
+
+      // 2. Delete activity
       await tx.activity.deleteMany({
         where: {
           userId: user.id,
-          targetUserId: targetUserId,
+          targetUserId: cleanTargetUserId,
           type: "FOLLOWED",
+        },
+      });
+
+      // 3. Clean up unread follower notifications to prevent ghost spam and flooding
+      await tx.notification.deleteMany({
+        where: {
+          userId: cleanTargetUserId,
+          actorId: user.id,
+          type: "NEW_FOLLOWER",
         },
       });
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Unfollow error:", error);
+    logger.error({ msg: "Unfollow error", error });
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

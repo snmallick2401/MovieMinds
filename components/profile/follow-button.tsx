@@ -26,6 +26,10 @@ export function FollowButton({
     try {
       if (isFollowing) {
         const res = await fetch(`/api/social/follow?targetUserId=${targetUserId}`, { method: "DELETE" });
+        if (res.status === 401) {
+          router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+          return;
+        }
         if (res.ok) {
           setIsFollowing(false);
           router.refresh();
@@ -36,6 +40,10 @@ export function FollowButton({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ targetUserId }),
         });
+        if (res.status === 401) {
+          router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+          return;
+        }
         if (res.ok) {
           setIsFollowing(true);
           router.refresh();
