@@ -1,5 +1,6 @@
 import { createServerClient, type SetAllCookies } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { applySecurityHeaders } from "@/lib/security/headers";
 
 const protectedPrefixes = ["/library", "/profile", "/notifications", "/stats"];
 const authPages = ["/login", "/signup"];
@@ -16,7 +17,12 @@ export async function middleware(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           response = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options),
+            response.cookies.set(name, value, {
+              ...options,
+              secure: process.env.NODE_ENV === "production",
+              sameSite: "lax",
+              path: options?.path ?? "/",
+            }),
           );
         },
       },
@@ -36,12 +42,13 @@ export async function middleware(request: NextRequest) {
   const url = request.url;
   const ip = request.headers.get("x-forwarded-for") ?? "unknown";
 
+
   if (!user && isProtected) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";
     redirectUrl.searchParams.set("next", `${pathname}${search}`);
     console.log(JSON.stringify({ level: "info", msg: "HTTP Request Redirected (Auth)", method, path: pathname, ip, duration: Date.now() - startTime }));
-    return NextResponse.redirect(redirectUrl);
+    return applySecurityHeaders(NextResponse.redirect(redirectUrl));
   }
 
   if (user && authPages.includes(pathname)) {
@@ -49,7 +56,7 @@ export async function middleware(request: NextRequest) {
     redirectUrl.pathname = "/";
     redirectUrl.search = "";
     console.log(JSON.stringify({ level: "info", msg: "HTTP Request Redirected (Auth)", method, path: pathname, ip, duration: Date.now() - startTime }));
-    return NextResponse.redirect(redirectUrl);
+    return applySecurityHeaders(NextResponse.redirect(redirectUrl));
   }
 
   // Intercept the response to log status code
@@ -63,7 +70,7 @@ export async function middleware(request: NextRequest) {
     duration: Date.now() - startTime 
   }));
 
-  return response;
+  return applySecurityHeaders(response);
 }
 
 export const config = {

@@ -15,7 +15,12 @@ export async function createClient() {
         setAll(cookiesToSet: Parameters<SetAllCookies>[0]) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options),
+              cookieStore.set(name, value, {
+                ...options,
+                secure: process.env.NODE_ENV === "production",
+                sameSite: "lax",
+                path: options?.path ?? "/",
+              }),
             );
           } catch {
             // Server components cannot always write cookies; middleware refreshes sessions.
