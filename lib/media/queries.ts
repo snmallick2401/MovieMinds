@@ -538,36 +538,101 @@ export const emptyExploreSections = {
 
 export const getExploreSections = unstable_cache(
   async () => {
-    const query = async (filters: MediaFilters, limit = 8) =>
-      (await findMedia({ ...filters, pageSize: limit }, { skipCount: true })).items;
-    
-    const [
-      trending,
-      popularMovies,
-      popularAnime,
-      topRated,
-      newReleases,
-      upcoming,
-      recentlyAdded
-    ] = await Promise.all([
-      query({ sort: "popular" }),
-      query({ types: ["MOVIE"], sort: "popular" }),
-      query({ types: ["ANIME", "ANIME_MOVIE", "OVA"], sort: "popular" }),
-      query({ sort: "rating" }),
-      query({ sort: "newest", statuses: ["RELEASED", "FINISHED"] }),
-      query({ sort: "newest", statuses: ["UPCOMING"] }),
-      query({ sort: "recent" }),
-    ]);
+    try {
+      const query = async (filters: MediaFilters, limit = 8) =>
+        (await findMedia({ ...filters, pageSize: limit }, { skipCount: true })).items;
+      
+      const [
+        trending,
+        popularMovies,
+        popularAnime,
+        topRated,
+        newReleases,
+        upcoming,
+        recentlyAdded
+      ] = await Promise.all([
+        query({ sort: "popular" }),
+        query({ types: ["MOVIE"], sort: "popular" }),
+        query({ types: ["ANIME", "ANIME_MOVIE", "OVA"], sort: "popular" }),
+        query({ sort: "rating" }),
+        query({ sort: "newest", statuses: ["RELEASED", "FINISHED"] }),
+        query({ sort: "newest", statuses: ["UPCOMING"] }),
+        query({ sort: "recent" }),
+      ]);
 
-    return {
-      trending,
-      popularMovies,
-      popularAnime,
-      topRated,
-      newReleases,
-      upcoming,
-      recentlyAdded,
-    };
+      let finalTrending = trending;
+      if (finalTrending.length === 0) {
+        finalTrending = (await prisma.media.findMany({
+          where: { posterUrl: { not: null } },
+          select: narrowCardSelect,
+          orderBy: [{ popularity: "desc" }, { voteCount: "desc" }],
+          take: 8,
+        })).map((m: any) => serializeMediaSummary(m));
+      }
+
+      let finalPopularMovies = popularMovies;
+      if (finalPopularMovies.length === 0) {
+        finalPopularMovies = (await prisma.media.findMany({
+          where: { mediaType: "MOVIE", posterUrl: { not: null } },
+          select: narrowCardSelect,
+          orderBy: [{ popularity: "desc" }, { voteCount: "desc" }],
+          take: 8,
+        })).map((m: any) => serializeMediaSummary(m));
+        if (finalPopularMovies.length === 0) {
+          finalPopularMovies = finalTrending;
+        }
+      }
+
+      let finalPopularAnime = popularAnime;
+      if (finalPopularAnime.length === 0) {
+        finalPopularAnime = (await prisma.media.findMany({
+          where: { mediaType: { in: ["ANIME", "ANIME_MOVIE", "OVA"] }, posterUrl: { not: null } },
+          select: narrowCardSelect,
+          orderBy: [{ popularity: "desc" }, { voteCount: "desc" }],
+          take: 8,
+        })).map((m: any) => serializeMediaSummary(m));
+        if (finalPopularAnime.length === 0) {
+          finalPopularAnime = finalTrending;
+        }
+      }
+
+      let finalTopRated = topRated;
+      if (finalTopRated.length === 0) {
+        finalTopRated = (await prisma.media.findMany({
+          where: { averageRating: { not: null }, posterUrl: { not: null } },
+          select: narrowCardSelect,
+          orderBy: [{ averageRating: "desc" }, { popularity: "desc" }],
+          take: 8,
+        })).map((m: any) => serializeMediaSummary(m));
+      }
+
+      return {
+        trending: finalTrending,
+        popularMovies: finalPopularMovies,
+        popularAnime: finalPopularAnime,
+        topRated: finalTopRated,
+        newReleases,
+        upcoming,
+        recentlyAdded,
+      };
+    } catch (err) {
+      logger.error({ msg: "getExploreSections failed, executing emergency fallback", error: err });
+      const emergencyMedia = (await prisma.media.findMany({
+        where: { posterUrl: { not: null } },
+        select: narrowCardSelect,
+        orderBy: [{ popularity: "desc" }, { voteCount: "desc" }],
+        take: 8,
+      })).map((m: any) => serializeMediaSummary(m));
+      return {
+        trending: emergencyMedia,
+        popularMovies: emergencyMedia,
+        popularAnime: emergencyMedia,
+        topRated: emergencyMedia,
+        newReleases: emergencyMedia,
+        upcoming: emergencyMedia,
+        recentlyAdded: emergencyMedia,
+      };
+    }
   },
   ["explore-sections"],
   { revalidate: 3600, tags: ["explore", "catalog"] }

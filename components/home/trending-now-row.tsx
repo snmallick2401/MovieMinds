@@ -8,7 +8,8 @@ import { MEDIA_TYPE_LABELS } from "@/lib/media/constants";
 import type { MediaSummary } from "@/types/media";
 
 export function TrendingNowRow({ items }: { items: MediaSummary[] }) {
-  const displayItems = items.slice(0, 6);
+  const displayItems = items?.slice(0, 6) || [];
+  if (displayItems.length === 0) return null;
 
   return (
     <section className="space-y-4">

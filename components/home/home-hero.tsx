@@ -96,31 +96,67 @@ export function HomeHero({
           </div>
         </div>
 
-        {/* Right Side Poster Collage */}
+        {/* Right Side Poster Collage or Feature Banner */}
         <div className="hidden relative h-64 w-full lg:block">
-          <div className="absolute inset-0 bg-gradient-to-l from-transparent via-purple-950/40 to-slate-950 z-10" />
-          <div className="grid h-full grid-cols-4 gap-3 overflow-hidden rounded-2xl opacity-85 transition-opacity hover:opacity-100">
-            {posters.map((item, index) => (
-              <div
-                key={item.id}
-                className={`relative h-full overflow-hidden rounded-xl border border-white/10 shadow-2xl transition-transform duration-500 hover:scale-105 ${
-                  index % 2 === 1 ? "translate-y-4" : "-translate-y-2"
-                }`}
-              >
-                {item.posterUrl ? (
-                  <Image
-                    src={item.posterUrl}
-                    alt={item.title}
-                    fill
-                    sizes="200px"
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="size-full bg-purple-900/40" />
-                )}
+          {posters.length > 0 ? (
+            <>
+              <div className="absolute inset-0 bg-gradient-to-l from-transparent via-purple-950/40 to-slate-950 z-10" />
+              <div className="grid h-full grid-cols-4 gap-3 overflow-hidden rounded-2xl opacity-85 transition-opacity hover:opacity-100">
+                {posters.map((item, index) => (
+                  <div
+                    key={item.id}
+                    className={`relative h-full overflow-hidden rounded-xl border border-white/10 shadow-2xl transition-transform duration-500 hover:scale-105 ${
+                      index % 2 === 1 ? "translate-y-4" : "-translate-y-2"
+                    }`}
+                  >
+                    {item.posterUrl ? (
+                      <Image
+                        src={item.posterUrl}
+                        alt={item.title}
+                        fill
+                        sizes="200px"
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="flex size-full items-center justify-center bg-gradient-to-b from-purple-900/60 to-slate-950 p-2 text-center text-xs font-bold text-white">
+                        {item.title}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          ) : (
+            <div className="relative flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-purple-500/30 bg-gradient-to-br from-purple-950/60 via-slate-900/80 to-indigo-950/60 p-6 shadow-2xl backdrop-blur-xl">
+              <div className="absolute -right-8 -top-8 size-36 rounded-full bg-purple-500/20 blur-2xl" />
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-400">
+                  <Star className="size-3.5 fill-amber-400" />
+                  Dragon Ball 7.0 Scale
+                </span>
+                <span className="flex items-center gap-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-1 text-xs font-bold text-purple-400">
+                  <Sparkles className="size-3.5" />
+                  AI Matching
+                </span>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-bold uppercase tracking-wider text-purple-300">
+                  Media Intelligence
+                </p>
+                <h4 className="text-xl font-extrabold text-white">
+                  3,000+ Movies, Series &amp; Anime
+                </h4>
+                <p className="text-xs text-white/70">
+                  Personalized algorithms, live community discussions, and instant watchlist tracking.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 text-[11px] font-semibold text-white/60">
+                <span className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5">TMDB</span>
+                <span className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5">AniList</span>
+                <span className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5">FastAPI ML</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

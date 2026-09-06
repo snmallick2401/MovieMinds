@@ -50,6 +50,8 @@ export function ContinueWatchingRow({
         };
       });
 
+  if (displayItems.length === 0) return null;
+
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between">

@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { formatDistanceToNow } from "date-fns";
 import { ContinueWatchingRow } from "@/components/home/continue-watching-row";
 import { HomeHero } from "@/components/home/home-hero";
 import { RecentActivityRow } from "@/components/home/recent-activity-row";
@@ -30,7 +31,7 @@ export default async function HomePage() {
 
   const tAuth = performance.now();
 
-  const [dbUser, stats, exploreSections, dashboard, personalizedRecommendations] = await Promise.all([
+  const [dbUser, stats, exploreSections, dashboard, personalizedRecommendations, rawActivities] = await Promise.all([
     userId
       ? getOrCreateProfile({
           id: userId,
@@ -52,6 +53,24 @@ export default async function HomePage() {
       ? getLibraryDashboard(userId)
       : Promise.resolve({ items: [], wishlist: [] }),
     getPersonalizedRecommendations(userId, 6),
+    prisma.activity.findMany({
+      where: userId ? { userId } : undefined,
+      include: {
+        media: {
+          select: {
+            id: true,
+            slug: true,
+            title: true,
+            posterUrl: true,
+            mediaType: true,
+            year: true,
+          },
+        },
+        rating: true,
+      },
+      orderBy: { createdAt: "desc" },
+      take: 4,
+    }).catch(() => []),
   ]);
 
   const tDataLoaded = performance.now();
@@ -71,6 +90,47 @@ export default async function HomePage() {
 
   const watchingEntries = dashboard.items.filter((item) => item.status === "WATCHING");
 
+  const heroPosters =
+    exploreSections.trending?.length > 0
+      ? exploreSections.trending
+      : personalizedRecommendations?.length > 0
+        ? personalizedRecommendations
+        : exploreSections.topRated || [];
+
+  const trendingItems =
+    exploreSections.trending?.length > 0
+      ? exploreSections.trending
+      : exploreSections.popularMovies?.length > 0
+        ? exploreSections.popularMovies
+        : personalizedRecommendations;
+
+  const continueWatchingFallback =
+    exploreSections.popularAnime?.length > 0
+      ? exploreSections.popularAnime
+      : trendingItems;
+
+  const activityFallback =
+    exploreSections.popularMovies?.length > 0
+      ? exploreSections.popularMovies
+      : trendingItems;
+
+  const formattedUserActivity = rawActivities.map((act) => ({
+    id: act.id,
+    type: act.type as any,
+    title: act.media?.title || "Media",
+    media: act.media ? {
+      id: act.media.id,
+      slug: act.media.slug ?? null,
+      title: act.media.title,
+      posterUrl: act.media.posterUrl,
+      mediaType: act.media.mediaType,
+      year: act.media.year,
+      averageRating: act.rating ? Number(act.rating.rating) : null,
+    } as any : null,
+    rating: act.rating ? Number(act.rating.rating) : undefined,
+    timeAgo: formatDistanceToNow(new Date(act.createdAt), { addSuffix: true }),
+  })).filter((a) => a.media !== null);
+
   return (
     <div className="space-y-10">
       {/* Welcome / Landing Hero Section */}
@@ -78,17 +138,17 @@ export default async function HomePage() {
         userName={userName}
         isLoggedIn={isLoggedIn}
         stats={isLoggedIn ? stats : undefined}
-        featuredPosters={exploreSections.trending}
+        featuredPosters={heroPosters}
       />
 
       {/* Continue Watching Section */}
       <ContinueWatchingRow
         userEntries={watchingEntries}
-        fallbackItems={exploreSections.popularAnime}
+        fallbackItems={continueWatchingFallback}
       />
 
       {/* Trending Now Section */}
-      <TrendingNowRow items={exploreSections.trending} />
+      <TrendingNowRow items={trendingItems} />
 
       {/* Recommended For You Section with Match % */}
       <RecommendedRow
@@ -100,7 +160,10 @@ export default async function HomePage() {
       />
 
       {/* Recent Activity Section */}
-      <RecentActivityRow fallbackMedia={exploreSections.popularMovies} />
+      <RecentActivityRow
+        userActivity={formattedUserActivity.length > 0 ? formattedUserActivity : undefined}
+        fallbackMedia={activityFallback}
+      />
 
       {/* Latest News Section */}
       <Suspense fallback={<div className="h-48 animate-pulse rounded-xl bg-muted" />}>
